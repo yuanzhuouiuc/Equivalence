@@ -1,13 +1,10 @@
 import math
 import sys
 import nlopt
-
-# 常量设置（可根据实际需要调整）
-EPSILON = 1e-9
-DIFF_THRESHOLD = 1e-4
-TYPE_MISMATCH_DIFF = 1000.0
-STR_MISMATCH_DIFF = 1.0
-LIST_LENGTH_MISMATCH_DIFF = 10.0
+import numpy as np
+from numba import jit
+import src.data.constant as constant
+import src.data.type as type
 
 class Compare:
     @staticmethod
@@ -26,7 +23,7 @@ class Compare:
         return s.split()
 
     @staticmethod
-    def levenshtein_distance(s1, s2):
+    def levenshtein_distance(s1: str, s2: str) -> int:
         """
         compute edit distance between s1, s2
         """
@@ -39,9 +36,9 @@ class Compare:
         for i in range(1, m + 1):
             for j in range(1, n + 1):
                 cost = 0 if s1[i-1] == s2[j-1] else 1
-                dp[i][j] = min(dp[i-1][j] + 1,      # 删除
-                               dp[i][j-1] + 1,      # 插入
-                               dp[i-1][j-1] + cost) # 替换
+                dp[i][j] = min(dp[i-1][j] + 1,
+                               dp[i][j-1] + 1,
+                               dp[i-1][j-1] + cost)
         return dp[m][n]
 
     @staticmethod
@@ -52,10 +49,10 @@ class Compare:
         n1 = data['n1']
         n2 = data['n2']
         diff = abs(n1 - n2)
-        if diff < EPSILON:
+        if diff < constant.Constant.EPSILON:
             return 1e6
         scaled_diff = abs(diff * x[0])
-        target_diff = DIFF_THRESHOLD + 20 * math.sqrt(diff)
+        target_diff = constant.Constant.DIFF_THRESHOLD + 20 * math.sqrt(diff)
         return abs(scaled_diff - target_diff)
 
     @staticmethod
@@ -93,17 +90,17 @@ class Compare:
         is_num2, n2 = Compare.try_parse_number(t2)
         if is_num1 and is_num2:
             diff = abs(n1 - n2)
-            if diff < DIFF_THRESHOLD:
+            if diff < constant.Constant.DIFF_THRESHOLD:
                 scale_factor = Compare.optimize_scale_factor(n1, n2)
                 diff = abs(n1 * scale_factor - n2 * scale_factor)
             return diff
         if is_num1 != is_num2:
-            return TYPE_MISMATCH_DIFF
+            return constant.Constant.TYPE_MISMATCH_DIFF
         max_len = max(len(t1), len(t2))
         if max_len == 0:
             return 0.0
         edit_dist = Compare.levenshtein_distance(t1, t2)
-        return (edit_dist / max_len) * STR_MISMATCH_DIFF
+        return (edit_dist / max_len) * constant.Constant.STR_MISMATCH_DIFF
 
     @staticmethod
     def compute_diff(output1, output2):
@@ -122,12 +119,63 @@ class Compare:
         list2 = Compare.split_elements(trimmed2)
         if len(list1) > 1 or len(list2) > 1:
             if len(list1) != len(list2):
-                return LIST_LENGTH_MISMATCH_DIFF * abs(len(list1) - len(list2))
+                return constant.Constant.LIST_LENGTH_MISMATCH_DIFF * abs(len(list1) - len(list2))
             diff = 0.0
             for elem1, elem2 in zip(list1, list2):
                 diff += Compare.element_level_diff(elem1, elem2)
             return diff
         return Compare.element_level_diff(trimmed1, trimmed2)
+
+    @staticmethod
+    def diff_float(n1: float, n2: float) -> float:
+        return abs(n1 - n2)
+
+    @staticmethod
+    def diff_list(list1: list, list2: list, ele_type: type.ResultType) -> float:
+        # first compare the length
+        if len(list1) != len(list2):
+            return constant.Constant.LIST_LENGTH_MISMATCH_DIFF
+        # then check the element type and compare the element
+        res_diff = 0.0
+        if ele_type == type.ResultType.FLOAT or ele_type == type.ResultType.INTEGER:
+            for i in range(len(list1)):
+                res_diff += Compare.diff_float(list1[i], list2[i])
+        if ele_type == type.ResultType.STRING:
+            for i in range(len(list1)):
+                res_diff += Compare.levenshtein_distance(list1[i], list2[i])
+        return float(res_diff)
+
+    @staticmethod
+    @jit(nopython=True)
+    def diff_float_numba(list1: np.ndarray, list2: np.ndarray) -> float:
+        """
+        use numba for acceleration
+        """
+        res_diff = 0.0
+        for i in range(len(list1)):
+            res_diff += abs(list1[i] - list2[i])
+        return res_diff
+
+    @staticmethod
+    def numba_diff_list(list1: list, list2: list, ele_type: type.ResultType) -> float:
+        """
+        compare lists, support inner element type int, float, string
+        """
+        if len(list1) != len(list2):
+            return constant.Constant.LIST_LENGTH_MISMATCH_DIFF * abs(len(list1) - len(list2))
+
+        if ele_type == type.ResultType.FLOAT or ele_type == type.ResultType.INTEGER:
+            array1 = np.array(list1, dtype=np.float64)
+            array2 = np.array(list2, dtype=np.float64)
+            return Compare.diff_float_numba(array1, array2)
+
+        elif ele_type == type.ResultType.STRING:
+            res_diff = 0.0
+            for i in range(len(list1)):
+                res_diff += Compare.levenshtein_distance(list1[i], list2[i])
+            return res_diff
+
+        return 0.0
 
     @staticmethod
     def log_divergence(input_data, out1, out2, err1, err2, diff):

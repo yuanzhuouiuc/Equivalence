@@ -1,7 +1,9 @@
 import sys
-import re
-from handler import Handler
-from compare import Compare, EPSILON
+import diff_oracle
+from src.diff_oracle.basic_compare import Compare
+import src.diff_oracle.byte_handler as byte_handler
+import src.diff_oracle.runner as runner
+import src.data.constant as constant
 
 def main():
     # input test cases, c program, rust program
@@ -28,8 +30,8 @@ def main():
         if not buffer:
             continue
 
-        c_handler = Handler(c_executable)
-        r_handler = Handler(rust_executable)
+        c_handler = byte_handler.Handler(c_executable)
+        r_handler = byte_handler.Handler(rust_executable)
 
         # execute c
         c_handler.execute_program_subprocess(buffer)
@@ -46,7 +48,7 @@ def main():
         r_error = r_handler.get_error()
 
         diff = Compare.compute_diff(c_result, r_result)
-        if diff > EPSILON:
+        if diff > constant.Constant.EPSILON:
             Compare.log_divergence(buffer, c_result, r_result, c_error, r_error, diff)
 
         c_handler.deinit()
@@ -69,4 +71,9 @@ def record(c_result):
         print("Error: Failed to open success.txt for writing!", file=sys.stderr)
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '--checker':
+            # nums, file_path, c_executable, rust_executable
+            runner.run(int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5])
+        else:
+            main()

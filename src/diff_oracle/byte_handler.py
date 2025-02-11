@@ -12,7 +12,7 @@ def read_all(fd):
     return b"".join(blocks)
 
 class Handler:
-    def __init__(self, exec_path):
+    def __init__(self, exec_path: bytes):
         self.exec_path = exec_path
         self.result = b""
         self.error = b""
@@ -30,7 +30,7 @@ class Handler:
         self.error = b""
         self.exit_code = -1
 
-    def execute_program_subprocess(self, buffer):
+    def execute_program_subprocess(self, buffer: bytes):
         self.cleanup()
         args = buffer.split()
         cmd = [self.exec_path] + args
