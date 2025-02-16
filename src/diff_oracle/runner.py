@@ -10,12 +10,12 @@ import src.data.constant as constant
 def run(nums: int, file_path: str, c_program: str, rust_program: str):
     # nums, file_path, c_executable, rust_executable
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, 'rb') as f:
             content = f.read()
     except Exception as e:
         print("Error: Failed to read from file {}: {}".format(file_path, e))
         sys.exit(1)
-    buffers = content.split('\n')
+    buffers = content.split(b'\n')
     c_handler = handler.Handler(c_program.encode('utf-8'))
     r_handler = handler.Handler(rust_program.encode('utf-8'))
     c = sub_checker.Sub_Checker(c_handler, r_handler)
