@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.optimize import differential_evolution
-import src.diff_oracle.checker as checker
+import src.diff_oracle.subprocess_checker as sub_checker
 
 class Diff_Evolution:
     @staticmethod
-    def one_d_int_step_differential_evolution(n: int, test_cases: list, c: checker.Checker):
+    def one_d_int_step_differential_evolution(n: int, test_cases: list, c: sub_checker.Sub_Checker):
         popsize = 25
         valid_candidates = []
         for case in test_cases:
@@ -42,7 +42,7 @@ class Diff_Evolution:
         return best_max_difference, best_result
 
     @staticmethod
-    def one_d_unicode_differential_evolution(n: int, test_cases: list, c: checker.Checker):
+    def one_d_unicode_differential_evolution(n: int, test_cases: list, c: sub_checker.Sub_Checker):
         popsize = 25
         valid_candidates = []
         for case in test_cases:
@@ -65,11 +65,15 @@ class Diff_Evolution:
                 func=c.unicode_objective,
                 bounds=bounds,
                 strategy='best1bin',
-                maxiter=1000,
+                maxiter=30000,
                 popsize=popsize,
                 init=init_population,
-                workers=6,
-                polish=True
+                mutation=(0.5, 1.5),
+                recombination=0.9,
+                tol=0.01,
+                workers=-1,
+                polish=False,
+                updating='immediate'
             )
             max_difference = -result.fun
             print(f"Run {run + 1}: Differential Evolution: Max |C(x) - R(x)| = {max_difference}")

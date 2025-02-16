@@ -1,0 +1,12 @@
+[package]
+name = "rust_module"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# change based on your own pyo3 version
+pyo3 = { version = "0.23.4", features = ["extension-module"] }
+
+[lib]
+name = "rust_module"
+crate-type = ["cdylib"] 

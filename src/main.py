@@ -1,7 +1,6 @@
 import sys
-import diff_oracle
 from src.diff_oracle.basic_compare import Compare
-import src.diff_oracle.byte_handler as byte_handler
+import src.diff_oracle.handler as handler
 import src.diff_oracle.runner as runner
 import src.data.constant as constant
 
@@ -10,7 +9,6 @@ def main():
     if len(sys.argv) < 4:
         print("Error: Expected {} arguments, but got {}.".format(3, len(sys.argv) - 1))
         sys.exit(1)
-
     file_path = sys.argv[1]
     c_executable = sys.argv[2].encode('utf-8')
     rust_executable = sys.argv[3].encode('utf-8')
@@ -21,18 +19,14 @@ def main():
     except Exception as e:
         print("Error: Failed to read from file {}: {}".format(file_path, e))
         sys.exit(1)
-
     # separate by '\n'
     buffers = content.split(b'\n')
-
     for buffer in buffers:
         buffer = buffer.strip()
         if not buffer:
             continue
-
-        c_handler = byte_handler.Handler(c_executable)
-        r_handler = byte_handler.Handler(rust_executable)
-
+        c_handler = handler.Handler(c_executable)
+        r_handler = handler.Handler(rust_executable)
         # execute c
         c_handler.execute_program_subprocess(buffer)
         c_result = c_handler.get_result()
@@ -50,7 +44,6 @@ def main():
         diff = Compare.compute_diff(c_result, r_result)
         if diff > constant.Constant.EPSILON:
             Compare.log_divergence(buffer, c_result, r_result, c_error, r_error, diff)
-
         c_handler.deinit()
         r_handler.deinit()
 
