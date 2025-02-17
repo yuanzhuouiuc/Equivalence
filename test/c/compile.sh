@@ -1,4 +1,3 @@
-PROGRAM_NAME="binary_search"
+PROGRAM_NAME="reverse_string"
 
-gcc -shared -o "./c/compiled/${PROGRAM_NAME}.so" -fPIC "./c/${PROGRAM_NAME}.c"
-
+gcc -fPIC -shared -o "./compiled/${PROGRAM_NAME}.so" "./${PROGRAM_NAME}.c"

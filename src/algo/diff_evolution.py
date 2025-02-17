@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.optimize import differential_evolution
-import src.diff_oracle.subprocess_checker as sub_checker
+import src.diff_oracle.checker.base_checker as checker
 
 class Diff_Evolution:
     @staticmethod
-    def one_d_int_step_differential_evolution(n: int, test_cases: list, c: sub_checker.Sub_Checker):
+    def one_d_int_step_differential_evolution(n: int, test_cases: list, c: checker.Base_Checker):
         popsize = 25
         valid_candidates = []
         for case in test_cases:
@@ -42,7 +42,7 @@ class Diff_Evolution:
         return best_max_difference, best_result
 
     @staticmethod
-    def one_d_unicode_differential_evolution(n: int, test_cases: list, c: sub_checker.Sub_Checker):
+    def one_d_unicode_differential_evolution(n: int, test_cases: list, c: checker.Base_Checker):
         popsize = 25
         valid_candidates = []
         for case in test_cases:

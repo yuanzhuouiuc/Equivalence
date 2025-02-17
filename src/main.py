@@ -66,7 +66,11 @@ def record(c_result):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == '--checker':
-            # nums, file_path, c_executable, rust_executable
-            runner.run(int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5])
+            if sys.argv[2] == '--subprocess':
+                # args, file_path, c_executable, rust_executable
+                runner.run_subprocess(int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6])
+            if sys.argv[2] == '--share-lib':
+                # args, file_path, c_share_lib, rust_executable
+                runner.run_share_lib(int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6])
         else:
             main()

@@ -1,17 +1,17 @@
 import numpy as np
 import cma
 import random
-import src.diff_oracle.subprocess_checker as sub_checker
+import src.diff_oracle.checker.base_checker as checker
 import src.data.constant as constant
 
 def clamp_solution(solution, lower_bound, upper_bound):
     return np.clip(solution, lower_bound, upper_bound)
 
-def unicode_cma_es(nums: int, c: sub_checker.Sub_Checker, seed_population: list):
+def unicode_cma_es(nums: int, checker: checker.Base_Checker, seed_population: list):
     DIMENSION = nums
     def cma_obj(x):
         x_int = np.rint(x).astype(int)
-        return -c.unicode_objective(x_int)
+        return -checker.unicode_objective(x_int)
 
     candidates = []
     for s in seed_population:
@@ -64,10 +64,10 @@ def unicode_cma_es(nums: int, c: sub_checker.Sub_Checker, seed_population: list)
     print("overall objective value:", best_overall_value)
     return best_overall_solution, best_overall_value
 
-def int_step_cma_es(nums: int, c: sub_checker.Sub_Checker, seed_population: list):
+def int_step_cma_es(nums: int, checker: checker.Base_Checker, seed_population: list):
     def cma_obj(x):
         x_int = np.rint(x).astype(int)
-        return c.int_step_objective(x_int)
+        return checker.int_step_objective(x_int)
     candidates = []
     for s in seed_population:
         try:
@@ -123,11 +123,11 @@ def int_step_cma_es(nums: int, c: sub_checker.Sub_Checker, seed_population: list
     return best_overall_solution, best_overall_value
 
 
-def int_step_error_tests(nums: int, lower_bound: int, upper_bound: int, c: sub_checker.Sub_Checker):
+def int_step_error_tests(nums: int, lower_bound: int, upper_bound: int, checker: checker.Base_Checker):
     for i in range(nums - 1, nums + 2):  # Ensure you generate 2*nums arrays
         # Generate a list of i random integers between lower_bound and upper_bound
         arr = [str(random.randint(lower_bound, upper_bound)) for _ in range(i)]
         # Join the list of integers into a string with spaces
         arr_str = " ".join(arr)
         # Call int_step_cma_es with the generated string
-        int_step_cma_es(i, c, [arr_str])
+        int_step_cma_es(i, checker, [arr_str])

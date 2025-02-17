@@ -1,31 +1,18 @@
+from abc import ABC, abstractmethod
 from functools import lru_cache
-from multiprocessing import Pool
 import numpy as np
-import src.diff_oracle.handler as handler
-import src.diff_oracle.basic_compare as compare
 import src.data.result as res
 import src.data.constant as constant
+import src.diff_oracle.basic_compare as compare
 
-class Sub_Checker:
-    def __init__(self, c_handler: handler.Handler, r_handler: handler.Handler):
-        self.c_handler = c_handler
-        self.r_handler = r_handler
-
+class Base_Checker(ABC):
+    @abstractmethod
     def C(self, x: bytes) -> res.DetectionResult:
-        self.c_handler.execute_program_subprocess(x)
-        c_result = self.c_handler.get_result().decode('utf-8')
-        c_error = self.c_handler.get_error().decode('utf-8')
-        if c_error or self.c_handler.get_exit_code() != 0:
-            return res.construct_error(c_result, c_error, self.c_handler.get_exit_code())
-        return res.detect_type(c_result.strip())
+        pass
 
+    @abstractmethod
     def R(self, x: bytes) -> res.DetectionResult:
-        self.r_handler.execute_program_subprocess(x)
-        r_result = self.r_handler.get_result().decode('utf-8')
-        r_error = self.r_handler.get_error().decode('utf-8')
-        if r_error or self.r_handler.get_exit_code() != 0:
-            return res.construct_error(r_result, r_error, self.c_handler.get_exit_code())
-        return res.detect_type(r_result.strip())
+        pass
 
     # objective function
     def F(self, x: bytes) -> float:
@@ -50,7 +37,8 @@ class Sub_Checker:
             r_res = float(r_ret.original_value)
             res_diff += compare.Compare.diff_float(c_res, r_res)
         if c_ret.result_type == res.ResultType.ERROR:
-            if c_ret.exit_code != r_ret.exit_code:
+            # neglect Asan Error from c_ret
+            if c_ret.exit_code != r_ret.exit_code and c_ret.exit_code not in [-11, -6, 134, 139]:
                 res_diff += constant.Constant.EXIT_CODE_MISMATCH
             # verify error pipe
             # if not (c_ret.stderr and r_ret.stderr):
@@ -74,17 +62,3 @@ class Sub_Checker:
         char_list = [chr(int(round(code))) for code in x]
         x_bytes = b' '.join(map(lambda c: c.encode('utf-8'), char_list))
         return self.cached_F(x_bytes)
-
-    def batch_test(self, n: int, test_cases: list, exec_func):
-        with Pool(processes=6) as pool:
-            args_list = [(idx, case, n, self) for idx, case in enumerate(test_cases)]
-            results = pool.map(exec_func, args_list)
-
-        best_result = max(results, key=lambda x: x[0])
-
-        print("\nBest Result Across All Seeds:")
-        print(f"Max |C(x) - R(x)| = {best_result[0]}")
-        if best_result[0] > 0:
-            print(f"Divergence detected")
-        else:
-            print("C(x) and R(x) are equivalent for all x")
