@@ -1,6 +1,6 @@
 import src.diff_oracle.handler as handler
 import src.diff_oracle.checker.base_checker as base_checker
-import src.data.result as res
+import src.utils.result as res
 
 class Sub_Checker(base_checker.Base_Checker):
     def __init__(self, c_handler: handler.Handler, r_handler: handler.Handler):

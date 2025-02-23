@@ -1,13 +1,10 @@
 import sys
-import ctypes
 import src.algo.cma_es as ce
 import src.algo.cluster_seeds as cluster
-import src.data.config as config
-import src.data.constant as constant
+import src.utils.config as config
+import src.utils.constant as constant
 import src.diff_oracle.handler as handler
-import src.diff_oracle.share_lib.c_module as c_mod
 import src.diff_oracle.checker.subprocess_checker as sub_checker
-import src.diff_oracle.checker.share_lib_checker as share_checker
 
 """
 Begin the test campaign
@@ -98,33 +95,3 @@ def handle_buffers(buffers: list[bytes]):
             max_len = len(data[l])
             max_index = l
     return data, max_index
-
-
-def run_share_lib(file_path: str, c_program: str, rust_program: str):
-    # file_path, c_share_lib, c_func, rust_executable
-    # try to build share lib
-    c_module = None
-    try:
-        c_module = c_mod.C_Module(
-            share_lib_path=c_program,
-            entry_function="main",
-            argtypes=(ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)),
-            restype=ctypes.c_int
-        )
-        if not c_module:
-            print("Failed to initialize the shared libraries.")
-            return
-        with open(file_path, 'rb') as f:
-            content = f.read()
-    except Exception as e:
-        print(f"error: {e}")
-        sys.exit(1)
-    buffers = content.split(b'\n')
-    data, max_index = handle_buffers(buffers)
-    r_handler = handler.Handler(rust_program.encode('utf-8'))
-    checker = share_checker.Share_Checker(c_module, r_handler)
-
-    if config.char_type_data:
-        char_test(data, max_index, checker.unicode_objective)
-    elif config.int_type_data:
-        int_test(data, max_index, checker.int_step_objective)

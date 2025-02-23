@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from functools import lru_cache
 import numpy as np
-import src.data.result as res
-import src.data.constant as constant
+import src.utils.result as res
+import src.utils.constant as constant
 import src.diff_oracle.basic_compare as compare
 
 class Base_Checker(ABC):

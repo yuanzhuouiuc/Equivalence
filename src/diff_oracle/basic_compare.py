@@ -4,8 +4,8 @@ import nlopt
 import numpy as np
 from numba import jit
 from datetime import datetime
-import src.data.constant as constant
-import src.data.type as type
+import src.utils.constant as constant
+import src.utils.type as type
 
 class Compare:
     @staticmethod

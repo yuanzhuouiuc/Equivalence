@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from src.data.type import ResultType
+from src.utils.type import ResultType
 import ast
 @dataclass
 class DetectionResult:

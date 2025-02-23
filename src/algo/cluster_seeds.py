@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from typing import List
 from sklearn.manifold import TSNE
 import src.algo.cma_es as ce
-import src.data.config as config
+import src.utils.config as config
 
 def plot_data(data: np.ndarray, cluster_labels: np.array = None):
     plt.figure(figsize=(10, 8))

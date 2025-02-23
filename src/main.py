@@ -3,8 +3,8 @@ import argparse
 from src.diff_oracle.basic_compare import Compare
 import src.diff_oracle.handler as handler
 import src.diff_oracle.runner as runner
-import src.data.constant as constant
-import src.data.config as config
+import src.utils.constant as constant
+import src.utils.config as config
 
 def main():
     # input test cases, c program, rust program
@@ -65,13 +65,10 @@ def record(c_result):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--c_executable', required=False)
-    parser.add_argument('-s', '--c_share_lib', required=False)
+    parser.add_argument('-c', '--c_executable', required=True)
     parser.add_argument('-r', '--rust_executable', required=True)
     parser.add_argument('-i', '--input_file_path', required=True)
     parser.add_argument('--checker', action='store_true')
-    parser.add_argument('--subprocess', action='store_true')
-    parser.add_argument('--share-lib', action='store_true')
     parser.add_argument('--gpu', action='store_true', help="Enable CUDA for clustering")
     parser.add_argument('--int', action='store_true', help="Enable when input type only contains 'int'")
     parser.add_argument('--char', action='store_true', help="Enable when input type contains 'char'")
@@ -85,9 +82,6 @@ if __name__ == '__main__':
         config.int_type_data = True
 
     if args.checker:
-        if args.subprocess:
-            runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
-        elif args.share_lib:
-            runner.run_share_lib(args.input_file_path, args.c_share_lib, args.rust_executable)
+        runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
     else:
         main()
