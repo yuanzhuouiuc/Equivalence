@@ -19,7 +19,7 @@ def main():
     except Exception as e:
         print("Error: Failed to read from file {}: {}".format(file_path, e))
         sys.exit(1)
-    # separate by '\n'
+    # separate by b'\n'
     buffers = content.split(b'\n')
     for buffer in buffers:
         buffer = buffer.strip()
@@ -34,8 +34,6 @@ def main():
         # c error or exit code != 0
         if c_error or c_handler.get_exit_code() != 0:
             continue
-        # record successful cases
-        record(buffer)
         # execute rust
         r_handler.execute_program_subprocess(buffer)
         r_result = r_handler.get_result()
@@ -67,10 +65,10 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == '--checker':
             if sys.argv[2] == '--subprocess':
-                # args, file_path, c_executable, rust_executable
-                runner.run_subprocess(int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6])
+                # file_path, c_executable, rust_executable
+                runner.run_subprocess(sys.argv[3], sys.argv[4], sys.argv[5])
             if sys.argv[2] == '--share-lib':
-                # args, file_path, c_share_lib, rust_executable
-                runner.run_share_lib(int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6])
+                # file_path, c_share_lib, rust_executable
+                runner.run_share_lib(sys.argv[3], sys.argv[4], sys.argv[5])
         else:
             main()

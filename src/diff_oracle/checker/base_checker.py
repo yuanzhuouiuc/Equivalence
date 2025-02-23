@@ -19,6 +19,9 @@ class Base_Checker(ABC):
         c_ret = self.C(x)
         r_ret = self.R(x)
         res_diff = 0.0
+        # omit the testcase which trigger C Asan error
+        if c_ret.result_type == res.ResultType.ERROR and c_ret.exit_code in [-11, -6, 134, 139]:
+            return 0.0
         if c_ret.result_type != r_ret.result_type:
             # found a divergence case, log it
             compare.Compare.log_divergence(x, c_ret.original_value, r_ret.original_value, c_ret.stderr, r_ret.stderr,
@@ -37,8 +40,7 @@ class Base_Checker(ABC):
             r_res = float(r_ret.original_value)
             res_diff += compare.Compare.diff_float(c_res, r_res)
         if c_ret.result_type == res.ResultType.ERROR:
-            # neglect Asan Error from c_ret
-            if c_ret.exit_code != r_ret.exit_code and c_ret.exit_code not in [-11, -6, 134, 139]:
+            if c_ret.exit_code != r_ret.exit_code:
                 res_diff += constant.Constant.EXIT_CODE_MISMATCH
             # verify error pipe
             # if not (c_ret.stderr and r_ret.stderr):

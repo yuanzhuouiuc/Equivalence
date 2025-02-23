@@ -3,6 +3,7 @@ import sys
 import nlopt
 import numpy as np
 from numba import jit
+from datetime import datetime
 import src.data.constant as constant
 import src.data.type as type
 
@@ -208,6 +209,8 @@ class Compare:
                 else:
                     logfile.write(err2.encode('utf-8', errors='replace'))
                 logfile.write(b"\nDifference Score: " + str(diff).encode('utf-8') + b"\n\n")
+                current_time = datetime.now().strftime("%a %b %d %H:%M:%S %Y")
+                logfile.write(b"\n[Time Detected]: " + current_time.encode('utf-8') + b"\n")
         except Exception as e:
             print("Error: Failed to open divergence.log for writing!", file=sys.stderr)
             return
