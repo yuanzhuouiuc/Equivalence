@@ -20,8 +20,8 @@ class CMA_ES:
     opts: params used for cma_es
     """
     def run(self, num_iterations: int = 50):
-        popsize = len(self._seed_population)
-        # popsize = 4100
+        # popsize = len(self._seed_population)
+        popsize = min(2000, len(self._seed_population))
         opts = {
             'popsize': popsize,
             'CMA_mu': popsize // 2,
@@ -45,7 +45,7 @@ class CMA_ES:
                 solutions = es.ask()
                 # current strategies: hold half siblings from last generation and
                 # merge the other half from initial seed population
-                num_seeds = int(5 * popsize // num_iterations)
+                num_seeds = popsize // 10
                 seed_indices = np.random.choice(len(self._seed_population), num_seeds, replace=False)
                 for i, seed_idx in enumerate(seed_indices):
                     solutions[i] = self._seed_population[seed_idx].copy()

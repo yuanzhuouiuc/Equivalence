@@ -1,8 +1,9 @@
 import sys
 import ctypes
-import src.data.constant as constant
 import src.algo.cma_es as ce
 import src.algo.cluster_seeds as cluster
+import src.data.config as config
+import src.data.constant as constant
 import src.diff_oracle.handler as handler
 import src.diff_oracle.share_lib.c_module as c_mod
 import src.diff_oracle.checker.subprocess_checker as sub_checker
@@ -26,8 +27,10 @@ def run_subprocess(file_path: str, c_program: str, rust_program: str):
     r_handler = handler.Handler(rust_program.encode('utf-8'))
     checker = sub_checker.Sub_Checker(c_handler, r_handler)
 
-    int_test(data, max_index, checker.int_step_objective)
-    # char_test(data, max_index, checker.unicode_objective)
+    if config.char_type_data:
+        char_test(data, max_index, checker.unicode_objective)
+    elif config.int_type_data:
+        int_test(data, max_index, checker.int_step_objective)
 
 """
 Method for handling int type test data 
@@ -52,7 +55,7 @@ def int_test(data: dict, max_index: int, obj_func: callable):
         objective_function=obj_func
     )
     train_data = clu.convert_buffers_int_ndarray(max_list)
-    clu.run_cluster_cma_es(train_data, True)
+    clu.run_cluster_cma_es(train_data)
 
 """
 Method for handling char type test data 
@@ -121,5 +124,7 @@ def run_share_lib(file_path: str, c_program: str, rust_program: str):
     r_handler = handler.Handler(rust_program.encode('utf-8'))
     checker = share_checker.Share_Checker(c_module, r_handler)
 
-    int_test(data, max_index, checker.int_step_objective)
-    # char_test(data, max_index, checker.unicode_objective)
+    if config.char_type_data:
+        char_test(data, max_index, checker.unicode_objective)
+    elif config.int_type_data:
+        int_test(data, max_index, checker.int_step_objective)

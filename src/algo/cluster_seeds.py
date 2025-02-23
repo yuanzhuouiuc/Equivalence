@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from typing import List
 from sklearn.manifold import TSNE
 import src.algo.cma_es as ce
+import src.data.config as config
 
 def plot_data(data: np.ndarray, cluster_labels: np.array = None):
     plt.figure(figsize=(10, 8))
@@ -33,13 +34,13 @@ class ClusterSeeds:
     Using cluster algorithm and generate population for genetic algorithm (CUDA version)
     By UMAP and hdbscan algorithm
     """
-    def gen_population_gpu(self, hdbscan_min_cluster_size: int = 10):
+    def gen_population_gpu(self, hdb_min_samples: int = 10, hdb_min_cluster_size: int = 10):
         from cuml.manifold import UMAP
         self._train_data = np.unique(self._train_data, axis=0)
         umap_model = UMAP(n_neighbors=15, min_dist=0.3)
         reduced_data = umap_model.fit_transform(self._train_data)
         # cluster with hdbscan
-        hdb_cluster = hdbscan.HDBSCAN(min_samples=hdbscan_min_cluster_size)
+        hdb_cluster = hdbscan.HDBSCAN(min_samples=hdb_min_samples, min_cluster_size=hdb_min_cluster_size)
         cluster_labels = hdb_cluster.fit_predict(reduced_data)
         plot_data(reduced_data, cluster_labels)
 
@@ -65,12 +66,12 @@ class ClusterSeeds:
     Using cluster algorithm and generate population for genetic algorithm (CPU version)
     By t-sne and hdbscan algorithm
     """
-    def gen_population_cpu(self, hdbscan_min_cluster_size: int = 10):
+    def gen_population_cpu(self, hdb_min_samples: int = 10, hdb_min_cluster_size: int = 10):
         self._train_data = np.unique(self._train_data, axis=0)
         tsne = TSNE(n_components=2, perplexity=30, random_state=42)
         reduced_data = tsne.fit_transform(self._train_data)
         # cluster using hdbscan
-        hdb_cluster = hdbscan.HDBSCAN(min_samples=hdbscan_min_cluster_size)
+        hdb_cluster = hdbscan.HDBSCAN(min_samples=hdb_min_samples, min_cluster_size=hdb_min_cluster_size)
         cluster_labels = hdb_cluster.fit_predict(reduced_data)
         plot_data(reduced_data, cluster_labels)
         unique_clusters = np.unique(cluster_labels)
@@ -90,12 +91,12 @@ class ClusterSeeds:
         plot_data(tsne.fit_transform(np.array(population)))
         return population
 
-    def run_cluster_cma_es(self, train_data: np.ndarray = None, using_gpu: bool = False):
+    def run_cluster_cma_es(self, train_data: np.ndarray = None):
         # if no train data, generate by random, not very useful
         if train_data is None:
             train_data = np.random.randint(self._lower_bound, self._upper_bound, size=(50000, self.dim))
         self._train_data = train_data
-        if using_gpu:
+        if config.use_gpu:
             population = self.gen_population_gpu()
         else:
             population = self.gen_population_cpu()
