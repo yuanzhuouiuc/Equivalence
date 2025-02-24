@@ -1,0 +1,189 @@
+File url: https://github.com/ssrg-vt/C2SRust/blob/main/C2Rust_Benchmarks/Adjusted_Internal_Benchmarks/reverse_string/output.txt
+
+----------------Input C Program----------------
+#include <string.h>
+#include <assert.h>     /// for assert
+#include <stdbool.h>    /// for bool
+#include <stdio.h>      /// for IO operations
+#include <stdlib.h>     /// for dynammic memory allocation
+#include <time.h> 
+// reverse string
+void reverse(char s[], int length)
+{
+    int c;
+    int i, j;
+
+    for (i = 0, j = length - 1; i < j; i++, j--)
+    {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+// reverse vector
+int n = 306;
+
+// Read integers from command-line arguments and create an array
+char *create_array_from_args(int argc, const char *argv[], int *size) {
+    *size = argc - 1;  // Number of integers provided as arguments
+
+    // Allocate memory for the integers
+    char *arr = (char *) malloc(*size * sizeof(char));
+    if (arr == NULL) {
+        printf("Memory allocation failed!\n");
+        return NULL;
+    }
+
+    // Store the first character of each argument in the array
+    for (int i = 0; i < *size; i++) {
+        if (argv[i + 1][1] != '\0') {  // Ensure each argument is a single character
+            printf("Error: Argument %d is not a single character.\n", i + 1);
+            free(arr);
+            return NULL;
+        }
+        arr[i] = argv[i + 1][0];  // Copy the first character of each argument
+    }
+    
+    return arr;
+}
+
+// Validating the number of arguments
+void validate_arg_count(int argc, int expected_argc) {
+    if (argc - 1 != expected_argc) {
+        printf("Error: Expected %d arguments, but got %d.\n", expected_argc, argc - 1);
+        exit(1);  // Exit the program with an error code
+        //abort();
+    }
+}
+
+/** Driver Code */
+int main(int argc, const char *argv[]) {
+    
+    // Call the validation function to check the argument count
+    validate_arg_count(argc, n);
+        
+    char *numbers = create_array_from_args(argc, argv, &n);
+    
+    int size = 100000001;
+    for (int i = 0; i < size; i++) {
+
+        reverse(numbers, n);
+
+    }
+    
+        // Loop through the array and print each element
+    for (int i = 0; i < n; i++) {
+        printf("%c ", numbers[i]);
+    }
+    
+    // Print a new line after the array elements
+    printf("\n");
+
+    return 0;
+
+}
+
+----------------Unsafe Rust Program----------------
+mod std;
+use std::env;
+use std::process;
+
+pub fn reverse(s: &mut [char]) {
+    let (mut i, mut j) = (0, s.len() - 1);
+    while i < j {
+        let c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+        i += 1;
+        j -= 1;
+    }
+}
+
+pub fn create_array_from_args(args: Vec<String>) -> Vec<char> {
+    if let Some(arg) = args.into_iter().find(|arg| arg.len() != 1) {
+        eprintln!("Error: Argument {} is not a single character.", arg);
+        process::exit(1);
+    }
+
+    args.iter().map(|arg| arg.chars().next().unwrap()).collect()
+}
+
+pub fn validate_arg_count(argc: usize, expected_argc: usize) {
+    if argc != expected_argc {
+        eprintln!(
+            "Error: Expected {} arguments, but got {}.",
+            expected_argc, argc
+        );
+        process::exit(1);
+    }
+}
+
+pub fn main() {
+    let args: Vec<String> = env::args().collect();
+    validate_arg_count(args.len() - 1, 306);
+    let mut numbers = create_array_from_args(args);
+    for _ in 0..100000001 {
+        reverse(&mut numbers);
+    }
+    for number in &numbers {
+        print!("{} ", number);
+    }
+    println!();
+}
+
+Cargo.toml Path:/var/folders/rq/dlz9_c0n2ml56w_bzms9kjy00000gn/T/iotaq_rust_4655570739459740414/rust_proj/Cargo.toml
+[package]
+name = "rust_proj"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+
+----------------Safe Rust Program----------------
+use std::env;
+use std::process;
+
+pub fn reverse(s: &mut [char]) {
+    let (mut i, mut j) = (0, s.len() - 1);
+    while i < j {
+        let c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+        i += 1;
+        j -= 1;
+    }
+}
+
+pub fn create_array_from_args(args: Vec<String>) -> Vec<char> {
+    let args: Vec<_> = args.into_iter().filter(|arg| arg.len() == 1).collect();
+    if args.len() != 306 {
+        eprintln!("Error: Expected 306 single character arguments.");
+        process::exit(1);
+    }
+    args.iter().map(|arg| arg.chars().next().unwrap()).collect()
+}
+
+pub fn validate_arg_count(argc: usize, expected_argc: usize) {
+    if argc != expected_argc {
+        eprintln!(
+            "Error: Expected {} arguments, but got {}.",
+            expected_argc, argc
+        );
+        process::exit(1);
+    }
+}
+
+pub fn main() {
+    let args: Vec<String> = env::args().skip(1).collect();
+    validate_arg_count(args.len(), 306);
+    let mut numbers = create_array_from_args(args);
+    for _ in 0..100000001 {
+        reverse(&mut numbers);
+    }
+    for number in &numbers {
+        print!("{} ", number);
+    }
+    println!();
+}

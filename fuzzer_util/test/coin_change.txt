@@ -1,0 +1,178 @@
+https://github.com/ssrg-vt/C2SRust/blob/main/C2Rust_Benchmarks/Adjusted_Internal_Benchmarks/coin_change/output.txt
+
+
+
+----------------Input C Program----------------
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>     /// for dynammic memory allocation
+#include <time.h> 
+
+// m is size of coins array (number of different coins) 
+int minCoins(int coins[], int m, int V) 
+{ 
+    // table[i] will be storing the minimum number of coins 
+    // required for i value.  So table[V] will have result 
+    int table[V+1]; 
+  
+    // Base case (If given value V is 0) 
+    table[0] = 0; 
+  
+    // Initialize all table values as Infinite 
+    for (int i=1; i<=V; i++) 
+        table[i] = INT_MAX; 
+  
+    // Compute minimum coins required for all 
+    // values from 1 to V 
+    for (int i=1; i<=V; i++) 
+    { 
+        // Go through all coins smaller than i 
+        for (int j=0; j<m; j++) 
+          if (coins[j] <= i) 
+          { 
+              int sub_res = table[i-coins[j]]; 
+              if (sub_res != INT_MAX && sub_res + 1 < table[i]) 
+                  table[i] = sub_res + 1; 
+          } 
+    }
+    return table[V]; 
+} 
+  
+// Driver program to test above function
+int n = 97;
+
+// Read integers from command-line arguments and create an array
+int *create_array_from_args(int argc, const char *argv[], int *size) {
+    *size = argc - 1;  // Number of integers provided as arguments
+
+    // Allocate memory for the integers
+    int *arr = (int *)malloc(*size * sizeof(int));
+    if (arr == NULL) {
+        printf("Memory allocation failed!\n");
+        return NULL;
+    }
+
+    // Parse the command-line arguments and store them in the array
+    for (int i = 0; i < *size; i++) {
+        arr[i] = atoi(argv[i + 1]);  // Convert argument to integer
+    }
+
+    return arr;
+}
+
+// Validating the number of arguments
+void validate_arg_count(int argc, int expected_argc) {
+    if (argc - 1 != expected_argc) {
+        printf("Error: Expected %d arguments, but got %d.\n", expected_argc, argc - 1);
+        exit(1);  // Exit the program with an error code
+        //abort();
+    }
+}
+
+/** Driver Code */
+int main(int argc, const char *argv[]) {
+    
+    // Call the validation function to check the argument count
+    validate_arg_count(argc, n);
+        
+    int *numbers = create_array_from_args(argc, argv, &n);
+
+    volatile int k = 0;
+    int V = 98564;
+ 
+    for (int i = 0; i < 500; i++)
+    {
+        
+        k = minCoins(numbers, 97, V);
+
+    }
+    printf("%d\n", k);
+    return 0;
+}
+
+
+----------------Unsafe Rust Program----------------
+mod stdio;
+mod limits;
+mod stdlib;
+mod time;
+
+pub fn min_coins(coins: Vec<i32>, m: usize, v: usize) -> i32 {
+    let mut table = vec![std::i32::MAX; v + 1];
+    table[0] = 0;
+
+    for i in 1..=v {
+        for j in 0..m {
+            if coins[j] <= i as i32 {
+                let sub_res = table[(i - coins[j] as usize) as usize];
+                if sub_res != std::i32::MAX && sub_res + 1 < table[i] {
+                    table[i] = sub_res + 1;
+                }
+            }
+        }
+    }
+    table[v]
+}
+
+pub fn main() {
+    assert!(std::os::args().len() == 98);  // change to std::env::args().len() if you want to run this
+
+    let args: Vec<String> = std::os::args().collect();
+
+    let v: i32 = 98564;
+    let mut numbers: Vec<i32> = Vec::new();
+
+    for i in 1..98 {
+        numbers.push(args[i].parse::<i32>().unwrap());
+    }
+
+    let mut k = 0;
+    for _ in 0..500 {
+        k = min_coins(numbers.clone(), 97, v as usize);
+    }
+    println!("{}", k);
+}
+Cargo.toml Path:/var/folders/rq/dlz9_c0n2ml56w_bzms9kjy00000gn/T/iotaq_rust_12069472141703170107/rust_proj/Cargo.toml
+[package]
+name = "rust_proj"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+
+----------------Safe Rust Program----------------
+pub fn min_coins(coins: Vec<i32>, m: usize, v: usize) -> i32 {      
+    let mut table = vec![std::i32::MAX; v + 1];      
+    table[0] = 0;      
+    for i in 1..=v {          
+        for j in 0..m {              
+            if coins[j] <= i as i32 {                  
+                let sub_res = table[i - coins[j] as usize];                  
+                if sub_res != std::i32::MAX && sub_res + 1 < table[i] {                      
+                    table[i] = sub_res + 1;                  
+                }              
+            }          
+        }      
+    }      
+    table[v]  
+}   
+
+pub fn main() {      
+    if std::env::args().len() != 98 {
+        println!("Error: Expected 97 arguments, but got {}.", std::env::args().len()-1);
+        return;
+    }
+    
+    let args: Vec<String> = std::env::args().collect();      
+    let v: i32 = 98564;      
+    let mut numbers: Vec<i32> = Vec::new();      
+    for i in 1..98 {          
+        numbers.push(args[i].parse::<i32>().unwrap());      
+    }      
+    let mut k = 0;      
+    for _ in 0..500 {          
+        k = min_coins(numbers.clone(), 97, v as usize);      
+    }      
+    println!("{}", k);  
+}
