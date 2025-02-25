@@ -8,11 +8,4 @@ PROGRAM_NAME="$1"
 
 cp "../afl/${PROGRAM_NAME}_afl.c" .
 
-gcc -fsanitize=address -g -c afl-help.c -o afl-help.o
-
-# afl-gcc-fast -fsanitize=address -fprofile-arcs -ftest-coverage -g -c "${PROGRAM_NAME}_afl.c" -o "${PROGRAM_NAME}_afl.o"
-afl-gcc-fast -fsanitize=address -c "${PROGRAM_NAME}_afl.c" -o "${PROGRAM_NAME}_afl.o"
-
-# afl-gcc-fast -fsanitize=address -fprofile-arcs -ftest-coverage -g -o "${PROGRAM_NAME}_afl" "${PROGRAM_NAME}_afl.o" afl-help.o
-afl-gcc-fast -fsanitize=address -o "${PROGRAM_NAME}_afl" "${PROGRAM_NAME}_afl.o" afl-help.o
-
+afl-gcc-fast -fsanitize=address -o "${PROGRAM_NAME}_afl" "${PROGRAM_NAME}_afl.c"

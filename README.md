@@ -6,7 +6,7 @@ fuzzer_util folder contains some example source code for fuzzer testing, which i
 The only important code resides in fuzzer_util/test/c_code/coverage folder.
 
 ## How to use fuzzer_util
-In fuzzer_util/test/c_code/coverage folder, afl-help.c&h files were used to do some functional checking and AFL testcases interception.
+In fuzzer_util/test/c_code/coverage folder, afl-help.h was used to do some inline functional checking and AFL testcases interception.
 ### AFL_INIT_ARGV();
 This micro was provided by AFL official, which was used to support afl fuzzing for programs read inputs from command line arguments.
 Deatailed can be found here:
@@ -53,9 +53,7 @@ Fianlly, put `#include "afl-help.h"` in your source code for AFL++ testing.
 
 ### Compile Method
 ```
-gcc -fsanitize=address -g -c afl-help.c -o afl-help.o
-afl-gcc-fast -fsanitize=address -c test_program.c -o test_program.o
-afl-gcc-fast -fsanitize=address -o test_program test_program.o afl-help.o
+afl-gcc-fast -fsanitize=address -o test_program test_program.c
 ```
 Then use AFL++ for fuzzing
 ```
@@ -68,6 +66,23 @@ afl-fuzz \
 
 ### fuzzer_util output
 Ideally, the fuzzing will generate 'input.txt' which contains testcases intercepted from AFL++, which passed the input equivalence checking and returned successfully. Each case is stored in a single line.
+
+### Inline function
+If you want to write some inline function to do your own logic, please expand afl-help.h.
+
+Also please refer to this for stopping instrumentation in inline functions:
+
+https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.instrument_list.md
+
+Example:
+```
+#define AFL_INIT_ARGV()           \
+do {                            \
+    __AFL_COVERAGE_OFF();       \
+    argv = afl_init_argv(&argc);  \
+    __AFL_COVERAGE_ON();        \
+} while (0)
+```
 ## src folder
 This contains the oracle for differential testing.
 
