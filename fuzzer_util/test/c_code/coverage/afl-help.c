@@ -39,6 +39,25 @@ char **afl_init_argv(int *argc) {
     return ret;
 }
 
+int write_int_array(int n, const int* numbers) {
+    FILE *fp = fopen(FILEPATH, "ab");
+    int fd = fileno(fp);
+    flock(fd, LOCK_EX);
+
+    char buf[32];
+    for (int i = 0; i < n; i++) {
+        int len = snprintf(buf, sizeof(buf), "%d", numbers[i]);
+        fwrite(buf, 1, len, fp);
+        if (i != n - 1) {
+            fwrite(" ", 1, 1, fp);
+        }
+    }
+    fwrite("\n", 1, 1, fp);
+    flock(fd, LOCK_UN);
+    fclose(fp);
+    return 0;
+}
+
 int write_argv(int argc, const char *argv[]) {
     FILE *fp = fopen(FILEPATH, "ab");
     int fd = fileno(fp);
@@ -105,8 +124,6 @@ bool validate(void *input_data, int argc, const char *argv[], DataType type) {
         }
         rc++;
     }
-    if (type != CHAR_TYPE) {
-        free(temp);
-    }
+    if (type == INT_TYPE) free(temp);
     return rc == argc;
 }

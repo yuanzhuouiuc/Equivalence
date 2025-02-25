@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import math
 import hdbscan
 import matplotlib.pyplot as plt
 from typing import List
@@ -54,7 +55,7 @@ class ClusterSeeds:
             # generate population for generic algorithm
             cluster_points = self._train_data[cluster_labels == cluster]
             cluster_size = cluster_points.shape[0]
-            num_samples = int(np.sqrt(cluster_size))
+            num_samples = int(math.log2(cluster_size))
             random_indices = np.random.choice(cluster_size, num_samples, replace=False)
             random_points = cluster_points[random_indices]
             population.extend(random_points)

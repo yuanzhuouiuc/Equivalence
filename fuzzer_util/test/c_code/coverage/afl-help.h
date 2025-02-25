@@ -38,4 +38,9 @@ do {                              \
     write_argv(argc, argv);       \
 } while (0)
 
+#define WRITE_INT_ARRAY(n, numbers)    \
+do {                              \
+    write_int_array(n, numbers);       \
+} while (0)
+
 #endif // AFL_VALIDATE_H

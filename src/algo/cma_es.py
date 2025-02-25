@@ -1,5 +1,6 @@
 import numpy as np
 import cma
+import random
 
 class CMA_ES:
     def __init__(self, nums: int, seed_population: list[list[int]], objective_function: callable, bounds: (int, int)):
@@ -36,16 +37,16 @@ class CMA_ES:
         best_overall_solution = None
         best_overall_value = np.inf
 
-        for seed in self._seed_population:
-            x0 = seed.copy()  # use as init seed
+        for _ in range(num_iterations):
+            x0 = random.choice(self._seed_population)
             sigma = 10000
             es = cma.CMAEvolutionStrategy(x0, sigma, opts)
-            NGEN = num_iterations  # gen times
+            NGEN = 50  # gen times
             for gen in range(NGEN):
                 solutions = es.ask()
                 # current strategies: hold half siblings from last generation and
                 # merge the other half from initial seed population
-                num_seeds = popsize // 10
+                num_seeds = min(popsize // 10, len(self._seed_population))
                 seed_indices = np.random.choice(len(self._seed_population), num_seeds, replace=False)
                 for i, seed_idx in enumerate(seed_indices):
                     solutions[i] = self._seed_population[seed_idx].copy()

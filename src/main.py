@@ -30,14 +30,14 @@ def main():
         c_handler = handler.Handler(c_executable)
         r_handler = handler.Handler(rust_executable)
         # execute c
-        c_handler.execute_program_subprocess(buffer)
+        c_handler.execute_program_subprocess_args(buffer)
         c_result = c_handler.get_result()
         c_error = c_handler.get_error()
         # c error or exit code != 0
         if c_error or c_handler.get_exit_code() != 0:
             continue
         # execute rust
-        r_handler.execute_program_subprocess(buffer)
+        r_handler.execute_program_subprocess_args(buffer)
         r_result = r_handler.get_result()
         r_error = r_handler.get_error()
 
@@ -73,6 +73,9 @@ if __name__ == '__main__':
     parser.add_argument('--int', action='store_true', help="Enable when input type only contains 'int'")
     parser.add_argument('--char', action='store_true', help="Enable when input type contains 'char'")
 
+    parser.add_argument('--args', action='store_true', help="executable read data from command line")
+    parser.add_argument('--stdin', action='store_true', help="executable read data from stdin'")
+
     args = parser.parse_args()
     if args.gpu:
         config.use_gpu = True
@@ -80,6 +83,11 @@ if __name__ == '__main__':
         config.char_type_data = True
     elif args.int:
         config.int_type_data = True
+
+    if args.args:
+        config.args_read = True
+    elif args.stdin:
+        config.stdin_read = True
 
     if args.checker:
         runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
