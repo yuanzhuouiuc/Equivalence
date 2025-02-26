@@ -86,15 +86,18 @@ do {                            \
 ## src folder
 This contains the oracle for differential testing.
 
-### Usage command line
-data which is 'int' type:
+### Usage command line exmaples
+executable input data which only contains 'int' type, read data from args:
 ```
-python3 src/main.py --checker --int -c c_executable -r rust_executable -i input_file_path
+python3 src/main.py --checker --args --int -c c_executable -r rust_executable -i input_file_path
 ```
-data which is 'char *' type:
+executable output data which is 'char *' type, read data from stdin:
 ```
-python3 src/main.py --checker --char -c c_executable -r rust_executable -i input_file_path
+python3 src/main.py --checker --stdin --char -c c_executable -r rust_executable -i input_file_path
 ```
+
+if executable read data from command args, please add '--args'
+if executable read data from command stdin, please add '--stdin'
 
 'c_executable' stands for gcc compiled executable path of the c code you want to test.
 

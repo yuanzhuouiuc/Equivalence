@@ -1,6 +1,5 @@
 import math
 import sys
-import nlopt
 import numpy as np
 from numba import jit
 from datetime import datetime
@@ -43,40 +42,6 @@ class Compare:
         return dp[m][n]
 
     @staticmethod
-    def objective_function(x, grad, data):
-        """
-        nlopt
-        """
-        n1 = data['n1']
-        n2 = data['n2']
-        diff = abs(n1 - n2)
-        if diff < constant.Constant.EPSILON:
-            return 1e6
-        scaled_diff = abs(diff * x[0])
-        target_diff = constant.Constant.DIFF_THRESHOLD + 20 * math.sqrt(diff)
-        return abs(scaled_diff - target_diff)
-
-    @staticmethod
-    def optimize_scale_factor(n1, n2):
-        """
-        use nlopt for scale factor, to approximate the target value
-        init val: 2.0, search area:[1.0, 1e6]
-        """
-        opt = nlopt.opt(nlopt.LN_COBYLA, 1)
-        opt.set_lower_bounds([1.0])
-        opt.set_upper_bounds([1e6])
-        data = {'n1': n1, 'n2': n2}
-        opt.set_min_objective(lambda x, grad: Compare.objective_function(x, grad, data))
-        opt.set_xtol_rel(1e-9)
-        opt.set_ftol_rel(1e-9)
-        x = [2.0]
-        try:
-            opt.optimize(x)
-        except Exception as e:
-            return 1.0
-        return x[0]
-
-    @staticmethod
     def element_level_diff(s1, s2):
         """
         compare element
@@ -91,9 +56,6 @@ class Compare:
         is_num2, n2 = Compare.try_parse_number(t2)
         if is_num1 and is_num2:
             diff = abs(n1 - n2)
-            if diff < constant.Constant.DIFF_THRESHOLD:
-                scale_factor = Compare.optimize_scale_factor(n1, n2)
-                diff = abs(n1 * scale_factor - n2 * scale_factor)
             return diff
         if is_num1 != is_num2:
             return constant.Constant.TYPE_MISMATCH_DIFF
@@ -148,7 +110,7 @@ class Compare:
 
     @staticmethod
     @jit(nopython=True)
-    def diff_float_numba(list1: np.ndarray, list2: np.ndarray) -> float:
+    def numba_diff_float(list1: np.ndarray, list2: np.ndarray) -> float:
         """
         use numba for acceleration
         """
@@ -168,7 +130,7 @@ class Compare:
         if ele_type == type.ResultType.FLOAT or ele_type == type.ResultType.INTEGER:
             array1 = np.array(list1, dtype=np.float64)
             array2 = np.array(list2, dtype=np.float64)
-            return Compare.diff_float_numba(array1, array2)
+            return Compare.numba_diff_float(array1, array2)
 
         elif ele_type == type.ResultType.STRING:
             res_diff = 0.0
