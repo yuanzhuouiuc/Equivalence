@@ -1,10 +1,11 @@
 import math
 import sys
 import numpy as np
-from numba import jit
-from datetime import datetime
 import src.utils.constant as constant
 import src.utils.type as type
+from numba import jit
+from datetime import datetime
+from rapidfuzz.distance import Levenshtein as RFLevenshtein
 
 class Compare:
     @staticmethod
@@ -134,8 +135,8 @@ class Compare:
 
         elif ele_type == type.ResultType.STRING:
             res_diff = 0.0
-            for i in range(len(list1)):
-                res_diff += Compare.levenshtein_distance(list1[i], list2[i])
+            for s1, s2 in zip(list1, list2):
+                res_diff += RFLevenshtein.distance(s1, s2)
             return res_diff
 
         return 0.0

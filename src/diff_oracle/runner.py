@@ -43,8 +43,8 @@ def int_test(data: dict, obj_func: callable):
     upper_bound = constant.Constant.INT_UPPER_BOUND
 
     for dim, seeds in data.items():
-        # run cluster+cma-es for seeds bigger than 10000, otherwise just pure cma-es
-        if len(seeds) < 10000:
+        # run cluster+cma-es for seeds bigger than 10000 or low dimension vector, otherwise just pure cma-es
+        if len(seeds) < 10000 or dim <= 10:
             seed_population = ce.convert_seeds_int_step(dim, seeds)
             cma_runner = ce.CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
             cma_runner.run(num_iterations=20)
@@ -66,7 +66,7 @@ def char_test(data: dict, obj_func: callable):
 
     # deap+pq, handle the max_index
     for dim, seeds in data.items():
-        if len(seeds) < 10000:
+        if len(seeds) < 10000 or dim <= 10:
             seed_population = ce.convert_seeds_unicode_step(dim, seeds)
             cma_runner = ce.CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
             cma_runner.run(num_iterations=20)
@@ -76,7 +76,7 @@ def char_test(data: dict, obj_func: callable):
                 bounds=(lower_bound, upper_bound),
                 objective_function=obj_func
             )
-            train_data = clu.convert_buffers_int_ndarray(seeds)
+            train_data = clu.convert_buffers_unicode_ndarray(seeds)
             clu.run_cluster_cma_es(train_data)
 
 

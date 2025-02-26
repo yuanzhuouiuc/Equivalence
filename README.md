@@ -91,7 +91,7 @@ executable input data which only contains 'int' type, read data from args:
 ```
 python3 src/main.py --checker --args --int -c c_executable -r rust_executable -i input_file_path
 ```
-executable output data which is 'char *' type, read data from stdin:
+executable input data which is 'char *' type, read data from stdin:
 ```
 python3 src/main.py --checker --stdin --char -c c_executable -r rust_executable -i input_file_path
 ```
