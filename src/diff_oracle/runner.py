@@ -43,6 +43,7 @@ def int_test(data: dict, obj_func: callable):
     lower_bound = constant.Constant.INT_LOWER_BOUND
     upper_bound = constant.Constant.INT_UPPER_BOUND
 
+    # use multi objectve cma_es
     for dim, seeds in data.items():
         seed_population = mo_cma.convert_seeds_int_step(dim, seeds)
         runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
@@ -55,7 +56,6 @@ def char_test(data: dict, obj_func: callable):
     lower_bound = constant.Constant.CHAR_LOWER_BOUND
     upper_bound = constant.Constant.CHAR_UPPER_BOUND
 
-    # deap+pq, handle the max_index
     for dim, seeds in data.items():
         seed_population = mo_cma.convert_seeds_unicode_step(dim, seeds)
         runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))

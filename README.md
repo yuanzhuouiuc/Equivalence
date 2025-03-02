@@ -104,3 +104,20 @@ if executable read data from command stdin, please add '--stdin'
 'rust_executable' stands for rustc compiled executable path of the rust code you want to test.
 
 'input_file_path' is the output file(intercepted testcases. 'input.txt') generated from AFL++ testing.
+
+### Compile C code with SanitizerCoverage
+This project uses `clang sanitizercoverage` to get coverage data and guide search.
+You should compile c source code with following commands.
+
+compile coverage_cb.c
+```
+clang -O0 -c test/c_code/coverage/coverage_cb.c -o test/c_code/coverage/coverage_cb.o
+```
+compile target c program (e.g, test.c)
+```
+clang -O0 -fsanitize=address -fsanitize-coverage=no-prune,trace-pc-guard -c test.c -o test.o
+```
+link and build executable
+```
+clang -O0 -fsanitize=address test/c_code/coverage/coverage_cb.o test.o -o test
+```

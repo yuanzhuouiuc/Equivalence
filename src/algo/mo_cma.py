@@ -15,8 +15,8 @@ class MO_CMA_ES:
         self._dim = dim
         self._seed_population = seed_population
         self._obj_func = objective_function
-        self._lower_bound = -40000
-        self._upper_bound = 10000
+        self._lower_bound = bounds[0]
+        self._upper_bound = bounds[1]
         self._lambda = min(200, len(self._seed_population))
         self._mu = self._lambda // 2
 

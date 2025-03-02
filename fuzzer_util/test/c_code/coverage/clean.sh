@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KEEP_FILES=("afl_compile.sh" "afl-help.h" "clean.sh" "gcov.sh")
+KEEP_FILES=("afl_compile.sh" "afl-help.h" "clean.sh" "gcov.sh" "coverage_cb.c")
 
 
 ALL_FILES=(*)
