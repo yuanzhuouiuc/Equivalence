@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import src.algo.cma_es as ce
+import src.algo.mo_cma as mo_cma
 import src.algo.cluster_seeds as cluster
 import src.utils.config as config
 import src.utils.constant as constant
@@ -43,19 +44,9 @@ def int_test(data: dict, obj_func: callable):
     upper_bound = constant.Constant.INT_UPPER_BOUND
 
     for dim, seeds in data.items():
-        # run cluster+cma-es for seeds bigger than 10000 or low dimension vector, otherwise just pure cma-es
-        if len(seeds) < 10000 or dim <= 10:
-            seed_population = ce.convert_seeds_int_step(dim, seeds)
-            cma_runner = ce.CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
-            cma_runner.run(num_iterations=20)
-        else:
-            clu = cluster.ClusterSeeds(
-                nums=dim,
-                bounds=(lower_bound, upper_bound),
-                objective_function=obj_func
-            )
-            train_data = clu.convert_buffers_int_ndarray(seeds)
-            clu.run_cluster_cma_es(train_data)
+        seed_population = mo_cma.convert_seeds_int_step(dim, seeds)
+        runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
+        runner.run()
 
 """
 Method for handling char type test data 
@@ -66,18 +57,9 @@ def char_test(data: dict, obj_func: callable):
 
     # deap+pq, handle the max_index
     for dim, seeds in data.items():
-        if len(seeds) < 10000 or dim <= 10:
-            seed_population = ce.convert_seeds_unicode_step(dim, seeds)
-            cma_runner = ce.CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
-            cma_runner.run(num_iterations=20)
-        else:
-            clu = cluster.ClusterSeeds(
-                nums=dim,
-                bounds=(lower_bound, upper_bound),
-                objective_function=obj_func
-            )
-            train_data = clu.convert_buffers_unicode_ndarray(seeds)
-            clu.run_cluster_cma_es(train_data)
+        seed_population = mo_cma.convert_seeds_unicode_step(dim, seeds)
+        runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
+        runner.run()
 
 
 """

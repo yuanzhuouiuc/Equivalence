@@ -35,7 +35,7 @@ class ClusterSeeds:
     Using cluster algorithm and generate population for genetic algorithm (CUDA version)
     By UMAP and hdbscan algorithm
     """
-    def gen_population_gpu(self, hdb_min_samples: int = 10, hdb_min_cluster_size: int = 10):
+    def gen_population_gpu(self, hdb_min_samples: int = 15, hdb_min_cluster_size: int = 20):
         from cuml.manifold import UMAP
         self._train_data = np.unique(self._train_data, axis=0)
         umap_model = UMAP(n_neighbors=15, min_dist=0.3)
@@ -92,7 +92,7 @@ class ClusterSeeds:
         plot_data(tsne.fit_transform(np.array(population)))
         return population
 
-    def run_cluster_cma_es(self, train_data: np.ndarray = None):
+    def run_cluster_cma_es(self, train_data: np.array = None):
         # if no train data, generate by random, not very useful
         if train_data is None:
             train_data = np.random.randint(self._lower_bound, self._upper_bound, size=(50000, self.dim))
@@ -105,7 +105,7 @@ class ClusterSeeds:
         cma_es_runner = ce.CMA_ES(self.dim, population, self._obj_func, (self._lower_bound, self._upper_bound))
         cma_es_runner.run(num_iterations=50)
 
-    def convert_buffers_int_ndarray(self, buffers: List[bytes]) -> np.ndarray:
+    def convert_buffers_int_ndarray(self, buffers: List[bytes]) -> np.array:
         """
         try to parse buffers to ndarray
         and each line must contain dim int
@@ -123,7 +123,7 @@ class ClusterSeeds:
                 print(f"parse seed error: {e}")
         return np.array(candidates, dtype=np.int32)
 
-    def convert_buffers_unicode_ndarray(self, buffers: List[bytes]) -> np.ndarray:
+    def convert_buffers_unicode_ndarray(self, buffers: List[bytes]) -> np.array:
         """
         try to parse buffers to ndarray
         and each line must contain dim int

@@ -1,9 +1,11 @@
 import numpy as np
 import cma
+import math
 import random
+import src.utils.config as config
 
 class CMA_ES:
-    def __init__(self, nums: int, seed_population: list[list[int]], objective_function: callable, bounds: (int, int)):
+    def __init__(self, nums: int, seed_population: np.array, objective_function: callable, bounds: (int, int)):
         self.nums = nums
         self._dim = nums
         self._seed_population = seed_population
@@ -13,7 +15,8 @@ class CMA_ES:
 
     def _objective_function(self, x):
         x_int = np.rint(x).astype(int)
-        return -abs(self.obj_func(x_int))
+        diff, c_cov = self.obj_func(x_int)
+        return -abs(diff)
 
     """
     candidates: seeds 
@@ -21,7 +24,6 @@ class CMA_ES:
     opts: params used for cma_es
     """
     def run(self, num_iterations: int = 50):
-        # popsize = len(self._seed_population)
         popsize = min(2000, len(self._seed_population))
         opts = {
             'popsize': popsize,
@@ -68,7 +70,7 @@ class CMA_ES:
         print("overall objective value:", best_overall_value)
         return best_overall_solution, best_overall_value
 
-def convert_seeds_int_step(dim: int, seeds: list[bytes]) -> list[list[int]]:
+def convert_seeds_int_step(dim: int, seeds: list[bytes]) -> np.array:
     candidates = []
     for s in seeds:
         temp = []
@@ -79,12 +81,12 @@ def convert_seeds_int_step(dim: int, seeds: list[bytes]) -> list[list[int]]:
             except Exception as e:
                 i = 0
             temp.append(i)
-        candidate = np.array(temp)
+        candidate = np.array(temp, dtype=int)
         if candidate.size == dim:
             candidates.append(candidate)
-    return candidates
+    return np.array(candidates, dtype=int)
 
-def convert_seeds_unicode_step(dim: int, seeds: list[bytes]) -> list[list[int]]:
+def convert_seeds_unicode_step(dim: int, seeds: list[bytes]) -> np.array:
     candidates = []
     for s in seeds:
         if s == b'':
@@ -96,7 +98,7 @@ def convert_seeds_unicode_step(dim: int, seeds: list[bytes]) -> list[list[int]]:
             except Exception as e:
                 i = 65533
             temp.append(i)
-        candidate = np.array(temp)
+        candidate = np.array(temp, dtype=int)
         if candidate.size == dim:
             candidates.append(candidate)
-    return candidates
+    return np.array(candidates, dtype=int)

@@ -104,12 +104,3 @@ if executable read data from command stdin, please add '--stdin'
 'rust_executable' stands for rustc compiled executable path of the rust code you want to test.
 
 'input_file_path' is the output file(intercepted testcases. 'input.txt') generated from AFL++ testing.
-### For Cuda Acceleration
-Add '--gpu' in the usage cmd
-
-Installation: Reference to RapidsAi for installation
-https://docs.rapids.ai/install/
-
-Example install command:
-
-conda create -n rapids-23.12 -c rapidsai -c nvidia -c conda-forge rapids=23.12 python=3.10 cudatoolkit=11.8

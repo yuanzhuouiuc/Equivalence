@@ -1,9 +1,27 @@
+import os
+import fcntl
 from abc import ABC, abstractmethod
 from functools import lru_cache
 import numpy as np
 import src.utils.result as res
 import src.utils.constant as constant
+import src.utils.config as config
 import src.diff_oracle.basic_compare as compare
+
+
+def _read_cov():
+    filepath = config.cov_temp
+    if not os.path.exists(filepath):
+        return -1.0
+    try:
+        with open(filepath, "r") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            coverage = float(f.readline().strip())  # Convert the coverage string to float
+            fcntl.flock(f, fcntl.LOCK_UN)
+            return coverage
+    except (ValueError, IOError) as e:
+        print(f"Error reading coverage file: {e}")
+        return -1.0
 
 class Base_Checker(ABC):
     @abstractmethod
@@ -14,19 +32,20 @@ class Base_Checker(ABC):
     def R(self, x: bytes) -> res.DetectionResult:
         pass
 
-    # objective function
-    def F(self, x: bytes) -> float:
+    # objective function, return (-abs(diff), c code coverage)
+    def F(self, x: bytes) -> (float, float):
         c_ret = self.C(x)
         r_ret = self.R(x)
+        c_cov = c_ret.cov
         res_diff = 0.0
         # omit the testcase which trigger C Asan error
         if c_ret.result_type == res.ResultType.ERROR and c_ret.exit_code in [-11, -6, 134, 139]:
-            return 0.0
+            return 0.0, c_cov
         if c_ret.result_type != r_ret.result_type:
             # found a divergence case, log it
             compare.Compare.log_divergence(x, c_ret.original_value, r_ret.original_value, c_ret.stderr, r_ret.stderr,
                                            constant.Constant.TYPE_MISMATCH_DIFF)
-            return -constant.Constant.TYPE_MISMATCH_DIFF
+            return -constant.Constant.TYPE_MISMATCH_DIFF, c_cov
         # handle the case by type
         if c_ret.result_type == res.ResultType.LIST:
             c_res = list(c_ret.parsed_value)
@@ -48,7 +67,7 @@ class Base_Checker(ABC):
         if res_diff > 0.0:
             compare.Compare.log_divergence(x, c_ret.original_value, r_ret.original_value, c_ret.stderr, r_ret.stderr,
                                            res_diff)
-        return -abs(res_diff)
+        return -abs(res_diff), c_cov
 
     @lru_cache(maxsize=1024)
     def cached_F(self, x: bytes) -> float:
