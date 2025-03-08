@@ -40,7 +40,7 @@ class Base_Checker(ABC):
         c_cov = c_ret.cov
         res_diff = 0.0
         # omit the testcase which trigger C Asan error
-        if c_ret.result_type == res.ResultType.ERROR or c_ret.exit_code in [-11, -6, 134, 139]:
+        if c_ret.result_type == res.ResultType.ERROR or c_ret.exit_code == -1:
             return 0.0, c_cov
         if c_ret.result_type != r_ret.result_type:
             # found a divergence case, log it

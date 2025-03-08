@@ -89,11 +89,11 @@ This contains the oracle for differential testing.
 ### Usage command line exmaples
 executable input data which only contains 'int' type, read data from args:
 ```
-python3 src/main.py --checker --args --int -c c_executable -r rust_executable -i input_file_path
+python3 -m src.main --checker --args --int -c c_executable -r rust_executable -i input_file_path
 ```
 executable input data which is 'char *' type, read data from stdin:
 ```
-python3 src/main.py --checker --stdin --char -c c_executable -r rust_executable -i input_file_path
+python3 -m src.main --checker --stdin --char -c c_executable -r rust_executable -i input_file_path
 ```
 
 if executable read data from command args, please add '--args'
