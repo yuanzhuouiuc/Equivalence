@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import src.algo.cma_es as ce
@@ -6,11 +7,13 @@ import src.algo.cluster_seeds as cluster
 import src.utils.config as config
 import src.utils.constant as constant
 import src.diff_oracle.handler as handler
+import src.diff_oracle.parse_afl_seed as parser
 import src.diff_oracle.checker.args_checker as args_checker
 import src.diff_oracle.checker.stdin_checker as stdin_checker
+import src.diff_oracle.checker.file_checker as file_checker
 
 """
-Begin the test campaign
+Begin the test campaign, support program read input from args or stdin
 """
 def run_subprocess(file_path: str, c_program: str, rust_program: str):
     # file_path, c_executable, rust_executable
@@ -37,6 +40,36 @@ def run_subprocess(file_path: str, c_program: str, rust_program: str):
         int_test(data, checker.int_step_objective)
 
 """
+Begin the test campaign, support program read input files
+"""
+def run_afl_min_seeds(seed_dir: str, c_program: str, rust_program: str):
+    # parse the seed_dir
+    data = parser.handle(seed_dir)
+    c_handler = handler.Handler(c_program.encode('utf-8'))
+    r_handler = handler.Handler(rust_program.encode('utf-8'))
+    checker = args_checker.Args_Checker(c_handler, r_handler)
+    byte_test(data, checker.byte_step_objective)
+    # for file_name in os.listdir(seed_dir):
+    #     file_path = os.path.join(seed_dir, file_name)
+    #     if os.path.isfile(file_path):
+    #         with open(file_path, 'rb') as file:
+    #             data = file.read()
+    #         c_handler.execute_program_subprocess_args(data)
+    #         c_result = c_handler.get_result()
+    #         c_error = c_handler.get_error()
+    #         # c error or exit code != 0
+    #         # if c_error or c_handler.get_exit_code() != 0:
+    #         #     continue
+    #         # execute rust
+    #         r_handler.execute_program_subprocess_args(data)
+    #         r_result = r_handler.get_result()
+    #         r_error = r_handler.get_error()
+    #         from src.diff_oracle.basic_compare import Compare
+    #         diff = Compare.compute_diff(c_result, r_result)
+    #         if diff > constant.Constant.EPSILON:
+    #             Compare.log_divergence(data, c_result, r_result, c_error, r_error, diff)
+
+"""
 Method for handling int type test data 
 """
 def int_test(data: dict, obj_func: callable):
@@ -45,8 +78,12 @@ def int_test(data: dict, obj_func: callable):
 
     # use multi objectve cma_es
     for dim, seeds in data.items():
-        seed_population = mo_cma.convert_seeds_int_step(dim, seeds)
-        runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
+        if isinstance(seeds, list):
+            if all(isinstance(seed, bytes) for seed in seeds):
+                seeds = mo_cma.convert_seeds_int_step(dim, seeds)
+        # type check
+        assert isinstance(seeds, np.ndarray), "seeds should be a NumPy array"
+        runner = mo_cma.MO_CMA_ES(dim, seeds, obj_func, (lower_bound, upper_bound))
         runner.run()
 
 """
@@ -57,8 +94,26 @@ def char_test(data: dict, obj_func: callable):
     upper_bound = constant.Constant.CHAR_UPPER_BOUND
 
     for dim, seeds in data.items():
-        seed_population = mo_cma.convert_seeds_unicode_step(dim, seeds)
-        runner = mo_cma.MO_CMA_ES(dim, seed_population, obj_func, (lower_bound, upper_bound))
+        if isinstance(seeds, list):
+            if all(isinstance(seed, bytes) for seed in seeds):
+                seeds = mo_cma.convert_seeds_unicode_step(dim, seeds)
+        # type check
+        assert isinstance(seeds, np.ndarray), "seeds should be a NumPy array"
+        runner = mo_cma.MO_CMA_ES(dim, seeds, obj_func, (lower_bound, upper_bound))
+        runner.run()
+
+"""
+Method for handling pure byte data
+"""
+def byte_test(data: dict, obj_func: callable):
+    lower_bound = constant.Constant.BYTE_LOWER_BOUND
+    upper_bound = constant.Constant.BYTE_UPPER_BOUND
+
+    for dim, seeds in data.items():
+        # type check
+        assert isinstance(seeds, np.ndarray), "seeds should be a NumPy array"
+        # runner = ce.CMA_ES(dim, seeds, obj_func, (lower_bound, upper_bound))
+        runner = mo_cma.MO_CMA_ES(dim, seeds, obj_func, (lower_bound, upper_bound))
         runner.run()
 
 

@@ -67,7 +67,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--c_executable', required=True)
     parser.add_argument('-r', '--rust_executable', required=True)
-    parser.add_argument('-i', '--input_file_path', required=True)
+    parser.add_argument('-i', '--input_file_path', required=False)
     parser.add_argument('--checker', action='store_true')
     parser.add_argument('--gpu', action='store_true', help="Enable CUDA for clustering")
     parser.add_argument('--int', action='store_true', help="Enable when input type only contains 'int'")
@@ -75,21 +75,19 @@ if __name__ == '__main__':
 
     parser.add_argument('--args', action='store_true', help="executable read data from command line")
     parser.add_argument('--stdin', action='store_true', help="executable read data from stdin'")
+    parser.add_argument('--afl-seed', type=str, help="Path to the AFL seed folder")
 
     args = parser.parse_args()
-    if args.gpu:
-        config.use_gpu = True
-    if args.char:
-        config.char_type_data = True
-    elif args.int:
-        config.int_type_data = True
-
-    if args.args:
-        config.args_read = True
-    elif args.stdin:
-        config.stdin_read = True
+    config.use_gpu = args.gpu
+    config.char_type_data = args.char
+    config.int_type_data = not args.char and args.int
+    config.args_read = args.args
+    config.stdin_read = not args.args and args.stdin
 
     if args.checker:
-        runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
+        if args.afl_seed:
+            runner.run_afl_min_seeds(args.afl_seed, args.c_executable, args.rust_executable)
+        else:
+            runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
     else:
         main()

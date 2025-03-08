@@ -32,20 +32,20 @@ class Handler:
 
     def execute_program_subprocess_args(self, buffer: bytes):
         self.cleanup()
-        args = buffer.split()
-        cmd = [self.exec_path] + args
-        env = dict(**os.environ)
-        env["ASAN_OPTIONS"] = "log_to_stderr=1:abort_on_error=1:flush_on_exit=1"
+        # args = buffer.split()
+        # cmd = [self.exec_path] + args
+        cmd = self.exec_path + b' ' + buffer
 
         try:
             completed = subprocess.run(
                 cmd,
+                stdin=None,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 timeout=10,
-                env=env,
                 check=False,
-                bufsize=0
+                bufsize=0,
+                shell=True
             )
             self.result = completed.stdout
             self.error = completed.stderr
@@ -64,8 +64,6 @@ class Handler:
         if args_buffer:
             args = args_buffer.split()
             cmd += args
-        env = dict(**os.environ)
-        env["ASAN_OPTIONS"] = "log_to_stderr=1:abort_on_error=1:flush_on_exit=1"
 
         try:
             completed = subprocess.run(
@@ -74,9 +72,9 @@ class Handler:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 timeout=10,
-                env=env,
                 check=False,
-                bufsize=0
+                bufsize=0,
+                shell=True
             )
             self.result = completed.stdout
             self.error = completed.stderr

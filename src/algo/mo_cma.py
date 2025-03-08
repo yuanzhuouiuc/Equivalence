@@ -77,7 +77,7 @@ class MO_CMA_ES:
         for i, seed_idx in enumerate(seed_indices):
             population[i][:] = creator.Individual(self._seed_population[seed_idx].tolist())
 
-    def run(self, NGEN: int = 5000):
+    def run(self, NGEN: int = 150):
         toolbox, strategy, stats, logbook, hof = self._setup()
         stag_cnt, stag_limit = 0, 10
         best_fitness = 0.0
@@ -110,9 +110,9 @@ class MO_CMA_ES:
             record = stats.compile(population) if stats is not None else {}
             logbook.record(gen=gen, nevals=len(population), **record)
             print(logbook.stream)
-        print("\nBest individual found:", hof[0])
-        print("Best fitness:", hof[0].fitness.values)
-        return hof[0]
+        # print("\nBest individual found:", hof[0])
+        # print("Best fitness:", hof[0].fitness.values)
+        return
 
 def convert_seeds_int_step(dim: int, seeds: list[bytes]) -> np.array:
     candidates = []

@@ -7,6 +7,7 @@ import src.utils.result as res
 import src.utils.constant as constant
 import src.utils.config as config
 import src.diff_oracle.basic_compare as compare
+import src.diff_oracle.parse_afl_seed as parser
 
 
 def _read_cov():
@@ -39,7 +40,7 @@ class Base_Checker(ABC):
         c_cov = c_ret.cov
         res_diff = 0.0
         # omit the testcase which trigger C Asan error
-        if c_ret.result_type == res.ResultType.ERROR and c_ret.exit_code in [-11, -6, 134, 139]:
+        if c_ret.result_type == res.ResultType.ERROR or c_ret.exit_code in [-11, -6, 134, 139]:
             return 0.0, c_cov
         if c_ret.result_type != r_ret.result_type:
             # found a divergence case, log it
@@ -83,3 +84,7 @@ class Base_Checker(ABC):
         char_list = [chr(int(round(code))) for code in x]
         x_bytes = b' '.join(map(lambda c: c.encode('utf-8'), char_list))
         return self.cached_F(x_bytes)
+
+    def byte_step_objective(self, x: np.array) -> float:
+        b = parser.int_numpy_to_bytes(x)
+        return self.cached_F(b)
