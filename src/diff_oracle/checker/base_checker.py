@@ -6,9 +6,8 @@ import numpy as np
 import src.utils.result as res
 import src.utils.constant as constant
 import src.utils.config as config
+import src.utils.byte_converter as byte_converter
 import src.diff_oracle.basic_compare as compare
-import src.diff_oracle.parse_afl_seed as parser
-
 
 def _read_cov():
     filepath = config.cov_temp
@@ -86,5 +85,5 @@ class Base_Checker(ABC):
         return self.cached_F(x_bytes)
 
     def byte_step_objective(self, x: np.array) -> float:
-        b = parser.int_numpy_to_bytes(x)
+        b = byte_converter.int_numpy_to_bytes(x)
         return self.cached_F(b)

@@ -10,7 +10,7 @@ import src.diff_oracle.handler as handler
 import src.diff_oracle.parse_afl_seed as parser
 import src.diff_oracle.checker.args_checker as args_checker
 import src.diff_oracle.checker.stdin_checker as stdin_checker
-import src.diff_oracle.checker.file_checker as file_checker
+import src.diff_oracle.protobuf.proto_driver as proto_driver
 
 """
 Begin the test campaign, support program read input from args or stdin
@@ -43,31 +43,22 @@ def run_subprocess(file_path: str, c_program: str, rust_program: str):
 Begin the test campaign, support program read input files
 """
 def run_afl_min_seeds(seed_dir: str, c_program: str, rust_program: str):
-    # parse the seed_dir
-    data = parser.handle(seed_dir)
     c_handler = handler.Handler(c_program.encode('utf-8'))
     r_handler = handler.Handler(rust_program.encode('utf-8'))
     checker = args_checker.Args_Checker(c_handler, r_handler)
+    # parse the seed_dir
+    data = parser.handle(seed_dir, checker)
     byte_test(data, checker.byte_step_objective)
-    # for file_name in os.listdir(seed_dir):
-    #     file_path = os.path.join(seed_dir, file_name)
-    #     if os.path.isfile(file_path):
-    #         with open(file_path, 'rb') as file:
-    #             data = file.read()
-    #         c_handler.execute_program_subprocess_args(data)
-    #         c_result = c_handler.get_result()
-    #         c_error = c_handler.get_error()
-    #         # c error or exit code != 0
-    #         # if c_error or c_handler.get_exit_code() != 0:
-    #         #     continue
-    #         # execute rust
-    #         r_handler.execute_program_subprocess_args(data)
-    #         r_result = r_handler.get_result()
-    #         r_error = r_handler.get_error()
-    #         from src.diff_oracle.basic_compare import Compare
-    #         diff = Compare.compute_diff(c_result, r_result)
-    #         if diff > constant.Constant.EPSILON:
-    #             Compare.log_divergence(data, c_result, r_result, c_error, r_error, diff)
+
+"""
+Run test for function-level fuzzing
+"""
+def run_proto_buf_cases(afl_queue_path: str, c_program: str, rust_program: str, proto_path: str, proto_name: str, msg_name: str):
+    driver = proto_driver.ProtobufDriver(afl_queue_path, proto_path, proto_name, msg_name)
+    driver.basic_check(c_program, rust_program)
+    # generate population used for cma_es mutation
+    afl_case_vec, min_bound_vec, max_bound_vec = driver.to_vectors()
+    return
 
 """
 Method for handling int type test data 
@@ -106,8 +97,8 @@ def char_test(data: dict, obj_func: callable):
 Method for handling pure byte data
 """
 def byte_test(data: dict, obj_func: callable):
-    lower_bound = constant.Constant.BYTE_LOWER_BOUND
-    upper_bound = constant.Constant.BYTE_UPPER_BOUND
+    lower_bound = constant.Constant.BYTES_LOWER_BOUND
+    upper_bound = constant.Constant.BYTES_UPPER_BOUND
 
     for dim, seeds in data.items():
         # type check

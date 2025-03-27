@@ -47,7 +47,6 @@ def main():
         c_handler.deinit()
         r_handler.deinit()
 
-
 def to_utf_8(file_path):
     with open(file_path, "rb") as f:
         raw_data = f.read()
@@ -72,10 +71,11 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', action='store_true', help="Enable CUDA for clustering")
     parser.add_argument('--int', action='store_true', help="Enable when input type only contains 'int'")
     parser.add_argument('--char', action='store_true', help="Enable when input type contains 'char'")
-
     parser.add_argument('--args', action='store_true', help="executable read data from command line")
     parser.add_argument('--stdin', action='store_true', help="executable read data from stdin'")
     parser.add_argument('--afl-seed', type=str, help="Path to the AFL seed folder")
+    parser.add_argument('--proto', nargs=3, metavar=('proto_path', 'proto_name', 'msg_name'),
+                        help="Specify Protocol Buffer details: path to .proto file, Protocol Buffer name, and message name")
 
     args = parser.parse_args()
     config.use_gpu = args.gpu
@@ -89,5 +89,8 @@ if __name__ == '__main__':
             runner.run_afl_min_seeds(args.afl_seed, args.c_executable, args.rust_executable)
         else:
             runner.run_subprocess(args.input_file_path, args.c_executable, args.rust_executable)
+    elif args.proto:
+        runner.run_proto_buf_cases(args.afl_seed, args.c_executable, args.rust_executable, args.proto[0], args.proto[1],
+                                   args.proto[2])
     else:
         main()

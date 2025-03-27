@@ -83,7 +83,7 @@ do {                            \
     __AFL_COVERAGE_ON();        \
 } while (0)
 ```
-## src folder
+## Diff Test Oracle
 This contains the oracle for differential testing.
 
 ### Usage command line exmaples
@@ -120,4 +120,72 @@ clang -O0 -fsanitize=address -fsanitize-coverage=no-prune,trace-pc-guard -c test
 link and build executable
 ```
 clang -O0 -fsanitize=address test/c_code/coverage/coverage_cb.o test.o -o test
+```
+
+
+## Protocol BUffer Support
+
+### Function-level Fuzzing and Diff Testing
+This feature supports users to fuzz and mutated based on **function-level**.
+Noting that tested (c, rust) function pair, the rust function needs to be callable by outer c program.
+
+### Define .proto file
+THe following is an example.
+Given such (c, rust) pair definition
+```
+int c_strcasecmp (const char *s1, const char *s2)
+```
+```
+extern int c_strcasecmp(const char *s1, const char *s2);
+```
+
+User need to define `.proto` file for protocol buffer to use.
+```
+syntax = "proto3";
+
+message StrcasecmpInput {
+  string first_string = 1;
+  string second_string = 2;
+}
+```
+Requirements: 
+
+1. syntax must be 'proto3'
+2. Now only support one message format, the nested message is not supported
+3. Do not include package information
+
+
+### Generate C/Python bindings for .proto
+
+```
+protoc-c --c_out=. your.proto
+```
+```
+protoc --python_out=. your.proto
+```
+
+### Use LLM
+Users need to generate fuzzing harness code for C function and seeds generation script by LLM,
+then try to compile and start the fuzzing campaign.
+
+Making sure that harness code should only read input from `stdin`
+
+### Create Rust Share Lib
+Create shar lib with rust function in src/lib.rs
+then 
+```
+cargo build --release
+```
+Also, please include the same fuzzing harness code in the rust directory.
+Making sure the tested rust function is called externally in the harness code.
+```
+extern int c_strcasecmp(const char *s1, const char *s2);
+```
+And build the binary.
+
+### Equivalence Usage Command
+
+```
+python3 -m src.main --stdin -c c_exec -r r_exec --afl-seed afl_out_queue
+--proto path_to_.proto_folder proto_name message_name
 ```

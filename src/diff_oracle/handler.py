@@ -63,7 +63,7 @@ class Handler:
                 # Always return to original directory
                 os.chdir(original_dir)
 
-    def execute_program_subprocess_stdin(self, stdin_data: bytes, args_buffer: bytes = None):
+    def execute_program_subprocess_stdin(self, stdin_data: bytes, args_buffer: bytes = b''):
         self.cleanup()
         cmd = self.exec_path + b' ' + args_buffer
         with tempfile.TemporaryDirectory() as tmpdir:
