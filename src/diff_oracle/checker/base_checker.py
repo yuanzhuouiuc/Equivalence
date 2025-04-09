@@ -87,3 +87,6 @@ class Base_Checker(ABC):
     def byte_step_objective(self, x: np.array) -> float:
         b = byte_converter.int_numpy_to_bytes(x)
         return self.cached_F(b)
+
+    def proto_buf_objective(self, x: bytes) -> float:
+        return self.cached_F(x)

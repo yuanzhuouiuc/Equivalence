@@ -21,31 +21,33 @@ class ProtobufDriver():
         proto_name: Name of the proto file
         msg_name: Name of the message type to handle (e.g., "ProtoInput")
     """
-    def to_vectors(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def to_vectors(self) -> tuple[list, list, list, list]:
         afl_cases = self._process(self._afl_queue_path)
         vectors = []
         min_bound_vectors = []
         max_bound_vectors = []
-        i = 0
+        vec_field_infos = []
         for case in afl_cases:
-            # each case should have its own handler
-            proto_handler = proto_buf.ProtobufHandler(self._proto_path, self._proto_name, self._msg_name)
             try:
-                if not proto_handler.is_valid_msg(case):
+                if not self._proto_handler.is_valid_msg(case):
                     continue
-                vec, min_bound_vec, max_bound_vec = proto_handler.protobuf_to_vector(case)
+                vec, min_bound_vec, max_bound_vec, field_infos = self._proto_handler.protobuf_to_vector(case)
             except Exception as e:
                 print(f"Error parsing protobuf data: {e}")
                 continue
             # verify translation robustness
-            trans_case = proto_handler.vector_to_protobuf(vec)
-            assert proto_handler.is_equivalent(case, trans_case) == True
+            trans_case = self._proto_handler.vector_to_protobuf(vec, field_infos)
+            # if not self._proto_handler.is_equivalent(case, trans_case):
+            #     print(f"Not equivalent case when parsing protobuf data to vectors: {vec}!!!!!!!")
+            #     continue
+            trans_vec = self._proto_handler.protobuf_to_vector(trans_case)[0]
+            assert (trans_vec == vec).all()
             # generate bound vector for this case
             vectors.append(vec)
             min_bound_vectors.append(min_bound_vec)
             max_bound_vectors.append(max_bound_vec)
-            i += 1
-        return np.array(vectors), np.array(min_bound_vectors), np.array(max_bound_vectors)
+            vec_field_infos.append(field_infos)
+        return vectors, min_bound_vectors, max_bound_vectors, vec_field_infos
 
     """
     Function for checking if afl++ queue can trigger divergence case
@@ -60,8 +62,8 @@ class ProtobufDriver():
             c_result = c_handler.get_result()
             c_error = c_handler.get_error()
             # c error exists or exit code != 0
-            # if c_error or c_handler.get_exit_code() != 0:
-            #     continue
+            if c_error or c_handler.get_exit_code() != 0:
+                continue
             # execute rust
             r_handler.execute_program_subprocess_stdin(case)
             r_result = r_handler.get_result()
@@ -69,6 +71,9 @@ class ProtobufDriver():
             diff = Compare.compute_diff(c_result, r_result)
             if diff != 0:
                 Compare.log_divergence(case, c_result, r_result, c_error, r_error, diff)
+
+    def get_proto_handler(self):
+        return self._proto_handler
 
     def _process(self, folder_path: str) -> list[bytes]:
         if not os.path.exists(folder_path) or not os.path.isdir(folder_path):

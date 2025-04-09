@@ -1,31 +1,37 @@
-import numpy as np
 import cma
 import math
+import numpy as np
+from typing import List
+import src.diff_oracle.protobuf.proto_buf as proto_buf
 
 class PROTO_CMA_ES:
-    def __init__(self, nums: int, x0: np.array, objective_function: callable, bounds: tuple[np.ndarray, np.ndarray]):
+    def __init__(self, x0: np.array, objective_function: callable, bounds: tuple[np.ndarray, np.ndarray],
+                 field_info: List, handler: proto_buf.ProtobufHandler):
         """
         Initialize CMA-ES optimizer with a single starting point and dimension-specific bounds.
 
         Args:
-            nums: Number of dimensions
             x0: Initial solution vector
             objective_function: Function to be optimized
             bounds: Either (lower_bound, upper_bound) for uniform bounds,
                   or ([lower_bound_1, lower_bound_2, ...], [upper_bound_1, upper_bound_2, ...])
                   for dimension-specific bounds
         """
-        self._dim = nums
         self._seed = x0
+        self._dim = len(x0)
         self.obj_func = objective_function
 
         # Handle different types of bounds
         lower_bounds, upper_bounds = bounds
         self._lower_bound = np.array(lower_bounds)
         self._upper_bound = np.array(upper_bounds)
+        self._penalty_coefficient = 1.0e+6
 
-        if len(self._lower_bound) != nums or len(self._upper_bound) != nums:
-            raise ValueError(f"Bounds must have length equal to dimension ({nums})")
+        self._field_info = field_info
+        self._proto_handler = handler
+
+        if len(self._lower_bound) != self._dim or len(self._upper_bound) != self._dim:
+            raise ValueError(f"Bounds must have length equal to dimension ({self._dim})")
 
     def _objective_function(self, x):
         """
@@ -34,12 +40,14 @@ class PROTO_CMA_ES:
 
         Args:
             x: Solution vector to evaluate
-
         Returns:
             Negative absolute difference (for minimization)
         """
-
-        diff, c_cov = self.obj_func(x)
+        # convert vector to raw bytes for execution
+        proto_bytes = self._proto_handler.vector_to_protobuf(x, self._field_info)
+        if not self._proto_handler.is_valid_msg(proto_bytes):
+            return -self._penalty_coefficient
+        diff, c_cov = self.obj_func(proto_bytes)
         return -abs(diff)
 
     def run(self, num_iterations: int = 1, popsize: int = 2000):
@@ -72,10 +80,8 @@ class PROTO_CMA_ES:
             # Use the provided seed
             x0 = self._seed
             sigma = 10  # Initial step size
-
             # Initialize CMA-ES
             es = cma.CMAEvolutionStrategy(x0, sigma, opts)
-
             # Run optimization for specified generations
             NGEN = 50  # generations
             for gen in range(NGEN):
@@ -83,9 +89,6 @@ class PROTO_CMA_ES:
                 fitnesses = [self._objective_function(sol) for sol in solutions]
                 es.tell(solutions, fitnesses)
                 es.disp()
-                # Check if optimization should terminate
-                if es.stop():
-                    break
             # Get best solution from this run
             best_solution = np.rint(es.result.xbest).astype(int)
             best_value = es.result.fbest

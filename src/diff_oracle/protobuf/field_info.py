@@ -25,6 +25,7 @@ class FieldInfo:
         self.message_type_name = ""
         if self.is_message:
             self.message_type_name = field_descriptor.message_type.full_name
+        self.message_filed_infos = []
         # For repeated message fields (in repeated message fields)
         self.nested_fields = []
 
@@ -36,6 +37,11 @@ class FieldInfo:
         """Set information about a repeated field."""
         self.repeat_count = count
         self.repeat_lengths = repeat_lengths
+
+    def set_message_info(self, message_type_name, message_filed_infos):
+        """Important function for message reconstruction."""
+        self.message_type_name = message_type_name
+        self.message_filed_infos = message_filed_infos
 
     def __repr__(self):
         return (f"FieldInfo(name={self.name}, type={self.type}, label={self.label}, "

@@ -1,12 +1,14 @@
-import numpy as np
 import random
+import numpy as np
+from typing import List
 from deap import base, creator, tools
 from deap.cma import StrategyMultiObjective
 import src.diff_oracle.protobuf.proto_buf as proto_buf
 
 class PROTO_MO_CMA_ES:
 
-    def __init__(self, dim: int, seed_population: np.array, objective_function: callable, bounds: (np.ndarray, np.ndarray), proto_handler: proto_buf.ProtobufHandler):
+    def __init__(self, dim: int, seed_population: np.array, objective_function: callable, bounds: (np.ndarray, np.ndarray),
+                 field_info: List, proto_handler: proto_buf.ProtobufHandler):
         """
         :param dim: vector dimension
         :param seed_population: initial population, shape: (n, dim)
@@ -18,6 +20,7 @@ class PROTO_MO_CMA_ES:
         self._lambda = min(200, len(self._seed_population))
         self._mu = self._lambda // 2
         self._proto_handler = proto_handler
+        self._field_info = field_info
 
         lower_bounds, upper_bounds = bounds
         if len(lower_bounds) == dim and len(upper_bounds) == dim:
@@ -43,14 +46,15 @@ class PROTO_MO_CMA_ES:
             self._enforce_bounds(ind)
         return population
 
-    def _evaluate(self, x: bytes):
-        if not self._proto_handler.is_valid_msg(x):
+    def _evaluate(self, x):
+        proto_bytes = self._proto_handler.vector_to_protobuf(x, self._field_info)
+        if not self._proto_handler.is_valid_msg(proto_bytes):
             return (-self._penalty_coefficient, -1.0)
-        diff, c_cov = self._obj_func(x)
+        diff, c_cov = self._obj_func(proto_bytes)
         return (abs(diff), c_cov)
 
     def _validity(self, ind):
-        proto_bytes = self._proto_handler.vector_to_protobuf(ind)
+        proto_bytes = self._proto_handler.vector_to_protobuf(ind, self._field_info)
         if not self._proto_handler.is_valid_msg(proto_bytes):
             return False
         arr = np.array(ind)

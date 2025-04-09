@@ -4,6 +4,7 @@ import numpy as np
 import src.algo.cma_es as ce
 import src.algo.mo_cma as mo_cma
 import src.algo.cluster_seeds as cluster
+import src.algo.proto_cma_es as proto_cma_es
 import src.utils.config as config
 import src.utils.constant as constant
 import src.diff_oracle.handler as handler
@@ -25,7 +26,6 @@ def run_subprocess(file_path: str, c_program: str, rust_program: str):
         sys.exit(1)
     buffers = content.split(b'\n')
     data = handle_buffers_numpy(buffers)
-    # subprocess runner
     c_handler = handler.Handler(c_program.encode('utf-8'))
     r_handler = handler.Handler(rust_program.encode('utf-8'))
 
@@ -57,7 +57,17 @@ def run_proto_buf_cases(afl_queue_path: str, c_program: str, rust_program: str, 
     driver = proto_driver.ProtobufDriver(afl_queue_path, proto_path, proto_name, msg_name)
     driver.basic_check(c_program, rust_program)
     # generate population used for cma_es mutation
-    afl_case_vec, min_bound_vec, max_bound_vec = driver.to_vectors()
+    afl_case_vec, min_bound_vec, max_bound_vec, case_field_infos = driver.to_vectors()
+
+    c_handler = handler.Handler(c_program.encode('utf-8'))
+    r_handler = handler.Handler(rust_program.encode('utf-8'))
+    # use stdin for reading data by default
+    checker = stdin_checker.Stdin_Checker(c_handler, r_handler)
+    for i in range(len(afl_case_vec)):
+        case_vec = afl_case_vec[i]
+        runner = proto_cma_es.PROTO_CMA_ES(case_vec, checker.proto_buf_objective,
+                        (min_bound_vec[i], max_bound_vec[i]), case_field_infos[i], driver.get_proto_handler())
+        runner.run()
     return
 
 """

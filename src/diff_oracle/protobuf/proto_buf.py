@@ -1,12 +1,13 @@
 import os
 import subprocess
 import numpy as np
+from typing import List
 import src.utils.constant as constant
+import src.diff_oracle.protobuf.field_info as FieldInfo
 from google.protobuf.descriptor_pool import DescriptorPool
 from google.protobuf.message_factory import MessageFactory
 from google.protobuf.descriptor_pb2 import FileDescriptorSet
 from google.protobuf.descriptor import FieldDescriptor
-import src.diff_oracle.protobuf.field_info as FieldInfo
 
 class ProtobufHandler:
     def __init__(self, proto_file_path: str, proto_name: str, message_type_name: str = "ProtoInput",
@@ -28,8 +29,6 @@ class ProtobufHandler:
         self.field_names = []
         self.field_descriptors = []
         self.max_length = max_length  # Default max length for strings/bytes
-        # Store field information for converting vector back to raw bytes
-        self._field_infos = []
         # Generate descriptor and load the message class
         self._generate_python_proto()
         self._load_message_class()
@@ -88,12 +87,14 @@ class ProtobufHandler:
             print(f"Error comparing messages: {e}")
             return False
         # Compare serialized representation in bytes
-        if message1.SerializeToString() != message2.SerializeToString():
-            a = 1
         return message1.SerializeToString() == message2.SerializeToString()
 
-    def protobuf_to_vector(self, proto_data: bytes) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Convert serialized protobuf data to a numerical vector."""
+    def protobuf_to_vector(self, proto_data: bytes) -> tuple[np.ndarray, np.ndarray, np.ndarray, list]:
+        """
+        Convert serialized protobuf data to a numerical vector.
+        Returns:
+            tuple: (vector, min_bounds, max_bounds, field_infos)
+        """
         # Parse the raw protobuf data
         message = self.message_class()
         try:
@@ -106,20 +107,19 @@ class ProtobufHandler:
         min_bounds_parts = []
         max_bounds_parts = []
         vector_index = 0
-        # Clear previous field info and rebuild
-        self._field_infos = []
+        # Clear previous field info and will be used for message rebuild
+        field_infos = []
         for field in self.field_descriptors:
             field_name = field.name
             field_info = FieldInfo.FieldInfo(field, vector_index)
             # Check if field is set for required fields
-            if field.label == FieldDescriptor.LABEL_REQUIRED and not message.HasField(field_name):
+            if field.label == FieldDescriptor.LABEL_REQUIRED and (not message.HasField(field_name)):
                 raise ValueError(f"Required field '{field_name}' is missing in the protobuf message")
             # Get field value if present
             if field.label != FieldDescriptor.LABEL_REPEATED:
                 field_value = getattr(message, field_name)
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
-                    field_vector = self._convert_message_to_vector(field_value, field_info)
-                    field_min_bounds, field_max_bounds = self._get_message_bounds()
+                    field_vector, field_min_bounds, field_max_bounds = self._convert_message_to_vector(field_value, field_info)
                 else:
                     field_vector = self._convert_field_to_vector(field, field_value)
                     field_min_bounds, field_max_bounds = self._get_field_bounds(field, len(field_vector))
@@ -130,13 +130,13 @@ class ProtobufHandler:
             else:
                 raise ValueError(f"Field '{field_name}' is missing in the protobuf message")
             field_info.set_vector_length(len(field_vector))
-            self._field_infos.append(field_info)
+            field_infos.append(field_info)
 
             vector_parts.extend(field_vector)
             min_bounds_parts.extend(field_min_bounds)
             max_bounds_parts.extend(field_max_bounds)
             vector_index += len(field_vector)
-        return np.array(vector_parts), np.array(min_bounds_parts), np.array(max_bounds_parts)
+        return np.array(vector_parts), np.array(min_bounds_parts), np.array(max_bounds_parts), field_infos
 
     def _convert_field_to_vector(self, field, field_value):
         """Convert a single field to a fixed-length vector representation."""
@@ -204,12 +204,26 @@ class ProtobufHandler:
         # Use the enum's numeric value and pad with zeros
         return [int(enum_value)]
 
-    # TODO: need to handle Message type recursively
     def _convert_message_to_vector(self, message_value, field_info):
-        """Convert a nested message to a fixed-length vector representation."""
-        # message_bytes = message_value.SerializeToString()
-        # return self._convert_bytes_to_vector(message_bytes)
-        raise NotImplementedError
+        """
+        Convert a nested message to a vector representation using recursion.
+
+        Args:
+            message_value: The protobuf message instance
+            field_info: Metadata about the field's position in the vector
+
+        Returns:
+            list: Vector representation of the message
+        """
+        message_type_name = message_value.DESCRIPTOR.full_name
+        nested_handler = ProtobufHandler(self.proto_path, self.proto_name, message_type_name, self.max_length)
+        message_bytes = message_value.SerializeToString()
+        # Convert to vector using the nested handler
+        nested_vector, min_bounds, max_bounds, nested_field_infos = nested_handler.protobuf_to_vector(message_bytes)
+        # Store the message type and handler for reconstruction
+        field_info.set_message_info(message_type_name, nested_field_infos)
+
+        return nested_vector, min_bounds, max_bounds
 
     def _get_numeric_types(self):
         """Return a tuple of all numeric field types."""
@@ -308,17 +322,21 @@ class ProtobufHandler:
         """
         raise NotImplementedError
 
-    def vector_to_protobuf(self, vector: np.ndarray):
-        """Convert a numerical vector back to raw bytes protobuf data."""
+    def vector_to_protobuf(self, vector: np.ndarray, field_infos: list):
+        """
+        Convert a numerical vector back to raw bytes protobuf data.
+        Args:
+            vector: The numerical vector representation
+            field_infos: Field metadata from protobuf_to_vector to reconstruct vector
+        """
         # Create a new protobuf message
         message = self.message_class()
         # Iterate through field_infos to reconstruct each field
-        for field_info in self._field_infos:
+        for field_info in field_infos:
             field_name = field_info.name
             field_type = field_info.type
             vector_start = field_info.vector_start
             vector_length = field_info.vector_length
-
             # Extract the vector segment for this field
             field_vector = vector[vector_start:vector_start + vector_length]
             try:
@@ -328,15 +346,12 @@ class ProtobufHandler:
                 else:
                     # For non-repeated fields
                     if field_info.is_message:
-                        # Skip message fields for now since they're not implemented
-                        print(f"Skipping message field {field_name} - reconstruction not implemented")
-                        continue
+                        self._reconstruct_message(message, field_info, field_vector)
                     else:
                         # Handle primitive types
                         self._reconstruct_primitive_field(message, field_info, field_vector)
             except Exception as e:
                 print(f"Error reconstructing field {field_name}: {e}")
-
         # Serialize the message to bytes
         return message.SerializeToString()
 
@@ -357,9 +372,8 @@ class ProtobufHandler:
             # Convert vector segment to bytes
             bytes_data = bytearray()
             for val in field_vector:
-                if val == 0:  # End of bytes
-                    break
-                bytes_data.append(int(val))
+                if 0 <= val <= 255:
+                    bytes_data.append(int(val))
             setattr(message, field_name, bytes(bytes_data))
 
         elif field_type == FieldDescriptor.TYPE_BOOL:
@@ -401,9 +415,8 @@ class ProtobufHandler:
                 # Convert to bytes
                 bytes_data = bytearray()
                 for val in element_vector:
-                    if val == 0:
-                        break
-                    bytes_data.append(int(val))
+                    if 0 <= val <= 255:
+                        bytes_data.append(int(val))
                 repeated_field.append(bytes(bytes_data))
 
             elif field_type == FieldDescriptor.TYPE_BOOL:
@@ -422,13 +435,40 @@ class ProtobufHandler:
                     repeated_field.append(int(element_vector[0]))
 
             elif field_type == FieldDescriptor.TYPE_MESSAGE:
-                # Skip message fields for now since they're not implemented
+                # Skip message fields for now
                 # in the original code
                 print(f"Skipping repeated message field {field_name} - reconstruction not implemented")
-
             offset += length
+    #TODO
+    def _reconstruct_message(self, message, field_info, field_vector):
+        """
+        Reconstruct a nested message from vector data using recursion.
 
+        Args:
+            message: Parent message where the reconstructed field will be set
+            field_info: Field metadata including message type information
+            field_vector: Vector representation of the message
 
+        Returns:
+            Reconstructed message instance
+        """
+        # Get the message type name
+        if hasattr(field_info, 'message_type_name'):
+            message_type_name = field_info.message_type_name
+        else:
+            # If not stored, try to get it from the field descriptor
+            field_descriptor = message.DESCRIPTOR.fields_by_name[field_info.name]
+            message_type_name = field_descriptor.message_type.full_name
+        # Create a nested handler for this message type
+        nested_handler = ProtobufHandler(self.proto_path, self.proto_name, message_type_name, self.max_length)
+        # Convert the vector back to protobuf bytes
+        proto_bytes = nested_handler.vector_to_protobuf(np.array(field_vector), field_info.message_filed_infos)
+        # Get the field from the message
+        field_name = field_info.name
+        nested_message = getattr(message, field_name)
+        # Parse the bytes into the message
+        nested_message.ParseFromString(proto_bytes)
+        return nested_message
 
 def read_binary_file(file_path):
     with open(file_path, 'rb') as file:
@@ -448,16 +488,17 @@ def test():
     message_type_name = "StrcasecmpInput"
     handler = ProtobufHandler(proto_path, proto_name, message_type_name)
     # parse file to raw bytes
-    seed_path = "/home/doushite/func/test/c-strcasecmp/c/seeds/seed_004"
+    # seed_path = "/home/doushite/func/test/c-strcasecmp/c/seeds/seed_020"
+    seed_path = "/home/doushite/func/test/c-strcasecmp/c/out/default/queue/id:000022,src:000001,time:152,execs:967,op:havoc,rep:2,+cov"
 
     from copy import deepcopy
     raw_bytes = read_binary_file(seed_path)
     copybytes = deepcopy(raw_bytes)
 
-    vec, min_vec, max_vec = handler.protobuf_to_vector(raw_bytes)
-    ret_bytes = handler.vector_to_protobuf(vec)
+    vec, min_vec, max_vec, field_infos = handler.protobuf_to_vector(raw_bytes)
+    ret_bytes = handler.vector_to_protobuf(vec, field_infos)
 
-    vec2, min_vec2, max_vec2 = handler.protobuf_to_vector(ret_bytes)
+    vec2, min_vec2, max_vec2, field_infos2 = handler.protobuf_to_vector(ret_bytes)
     print(raw_bytes)
     print(ret_bytes)
     assert handler.is_equivalent(ret_bytes, copybytes) == True
