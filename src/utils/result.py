@@ -25,10 +25,10 @@ def parse_result(result_str: str, cov: float = -1.0) -> DetectionResult:
         if isinstance(parts, list):
             return DetectionResult(ResultType.LIST, result_str, "", 0, parts, cov)
     # parse as int
-    if result_str.lstrip('-').isdigit():
-        return DetectionResult(ResultType.INTEGER, result_str, "", 0, int(result_str), cov)
-    # float
     try:
+        if result_str.lstrip('-').isdigit():
+            return DetectionResult(ResultType.INTEGER, result_str, "", 0, int(result_str), cov)
+    # float
         return DetectionResult(ResultType.FLOAT, result_str, "", 0, float(result_str), cov)
     except ValueError:
         pass

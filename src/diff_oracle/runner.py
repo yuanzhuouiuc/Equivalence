@@ -58,6 +58,7 @@ def run_proto_buf_cases(afl_queue_path: str, c_program: str, rust_program: str, 
     driver.basic_check(c_program, rust_program)
     # generate population used for cma_es mutation
     afl_case_vec, min_bound_vec, max_bound_vec, case_field_infos = driver.to_vectors()
+    # afl_case_vec, min_bound_vec, max_bound_vec, case_field_infos = driver.to_byte_vectors()
 
     c_handler = handler.Handler(c_program.encode('utf-8'))
     r_handler = handler.Handler(rust_program.encode('utf-8'))

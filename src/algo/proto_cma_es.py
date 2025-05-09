@@ -43,12 +43,18 @@ class PROTO_CMA_ES:
         Returns:
             Negative absolute difference (for minimization)
         """
-        # convert vector to raw bytes for execution
-        proto_bytes = self._proto_handler.vector_to_protobuf(x, self._field_info)
-        if not self._proto_handler.is_valid_msg(proto_bytes):
-            return -self._penalty_coefficient
-        diff, c_cov = self.obj_func(proto_bytes)
-        return -abs(diff)
+        try:
+            if np.any(np.isnan(x)):
+                return self._penalty_coefficient
+            x = np.clip(np.rint(x), self._lower_bound, self._upper_bound)
+            # convert vector to raw bytes for execution
+            proto_bytes = self._proto_handler.vector_to_protobuf(x, self._field_info)
+            if not self._proto_handler.is_valid_msg(proto_bytes):
+                return self._penalty_coefficient
+            diff, c_cov = self.obj_func(proto_bytes)
+            return -abs(diff)
+        except Exception as e:
+            return self._penalty_coefficient
 
     def run(self, num_iterations: int = 1, popsize: int = 2000):
         """
@@ -71,6 +77,7 @@ class PROTO_CMA_ES:
             'verb_disp': 1,
             'verb_log': 0,
             'tolfun': 1e-6,
+            'CMA_diagonal': True
         }
 
         best_overall_solution = None

@@ -331,6 +331,13 @@ class ProtobufHandler:
         """
         # Create a new protobuf message
         message = self.message_class()
+        if not field_infos:
+            # if field_infos is null, try to convert vector to bytes directly
+            try:
+                # transfer uint8 numpy array to bytes
+                return vector.astype('uint8').tobytes()
+            except Exception:
+                raise ValueError(f"field_infos is empty, and fail to convert vector to protobuf.")
         # Iterate through field_infos to reconstruct each field
         for field_info in field_infos:
             field_name = field_info.name
@@ -351,48 +358,86 @@ class ProtobufHandler:
                         # Handle primitive types
                         self._reconstruct_primitive_field(message, field_info, field_vector)
             except Exception as e:
-                print(f"Error reconstructing field {field_name}: {e}")
+                raise ValueError (f"Error reconstructing field {field_name}: {e}")
         # Serialize the message to bytes
         return message.SerializeToString()
 
+    def _convert_vector_to_field_value(self, field_type, vector_segment):
+        """
+        Convert a vector segment to a value of the corresponding field type
+        with proper bounds checking for numeric types.
+
+        Args:
+            field_type: Field type (from FieldDescriptor)
+            vector_segment: Vector segment representing the value
+
+        Returns:
+            Converted field value with proper bounds checking
+        """
+
+        # Handle simple types
+        if field_type == FieldDescriptor.TYPE_STRING:
+            return ''.join(chr(int(val)) for val in vector_segment if 0 <= val <= 255)
+        elif field_type == FieldDescriptor.TYPE_BYTES:
+            return bytes(int(val) for val in vector_segment if 0 <= val <= 255)
+        elif field_type == FieldDescriptor.TYPE_BOOL:
+            return bool(max(0, min(int(vector_segment[0]), 1)))
+        elif field_type == FieldDescriptor.TYPE_ENUM:
+            return max(constant.Constant.ENUM_LOWER_BOUND,
+                       min(int(vector_segment[0]), constant.Constant.ENUM_UPPER_BOUND))
+        # Handle numeric types
+        elif field_type in self._get_numeric_types():
+            # Group by type and associate with boundaries
+            type_bounds = {
+                # Floating point
+                FieldDescriptor.TYPE_FLOAT: (constant.Constant.FLOAT_LOWER_BOUND,
+                                             constant.Constant.FLOAT_UPPER_BOUND, float),
+                FieldDescriptor.TYPE_DOUBLE: (constant.Constant.DOUBLE_LOWER_BOUND,
+                                              constant.Constant.DOUBLE_UPPER_BOUND, float),
+                # 32-bit signed integers
+                FieldDescriptor.TYPE_INT32: (constant.Constant.INT32_LOWER_BOUND,
+                                             constant.Constant.INT32_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_SINT32: (constant.Constant.INT32_LOWER_BOUND,
+                                              constant.Constant.INT32_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_SFIXED32: (constant.Constant.INT32_LOWER_BOUND,
+                                                constant.Constant.INT32_UPPER_BOUND, int),
+                # 64-bit signed integers
+                FieldDescriptor.TYPE_INT64: (constant.Constant.INT64_LOWER_BOUND,
+                                             constant.Constant.INT64_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_SINT64: (constant.Constant.INT64_LOWER_BOUND,
+                                              constant.Constant.INT64_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_SFIXED64: (constant.Constant.INT64_LOWER_BOUND,
+                                                constant.Constant.INT64_UPPER_BOUND, int),
+                # 32-bit unsigned integers
+                FieldDescriptor.TYPE_UINT32: (constant.Constant.UINT32_LOWER_BOUND,
+                                              constant.Constant.UINT32_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_FIXED32: (constant.Constant.UINT32_LOWER_BOUND,
+                                               constant.Constant.UINT32_UPPER_BOUND, int),
+                # 64-bit unsigned integers
+                FieldDescriptor.TYPE_UINT64: (constant.Constant.UINT64_LOWER_BOUND,
+                                              constant.Constant.UINT64_UPPER_BOUND, int),
+                FieldDescriptor.TYPE_FIXED64: (constant.Constant.UINT64_LOWER_BOUND,
+                                               constant.Constant.UINT64_UPPER_BOUND, int),
+            }
+            if field_type in type_bounds:
+                lower, upper, converter = type_bounds[field_type]
+                return max(lower, min(converter(vector_segment[0]), upper))
+            # Default to integer
+            return int(vector_segment[0])
+        else:
+            raise ValueError(f"Unsupported field type: {field_type}")
+
     def _reconstruct_primitive_field(self, message, field_info, field_vector):
-        """Reconstruct a primitive (non-message, non-repeated) field."""
+        """Reconstruct a non-repeated primitive field"""
         field_name = field_info.name
         field_type = field_info.type
 
-        if field_type == FieldDescriptor.TYPE_STRING:
-            # Convert vector segment to string
-            chars = []
-            for val in field_vector:
-                if 0 <= val <= 255:
-                    chars.append(chr(int(val)))
-            setattr(message, field_name, ''.join(chars))
-
-        elif field_type == FieldDescriptor.TYPE_BYTES:
-            # Convert vector segment to bytes
-            bytes_data = bytearray()
-            for val in field_vector:
-                if 0 <= val <= 255:
-                    bytes_data.append(int(val))
-            setattr(message, field_name, bytes(bytes_data))
-
-        elif field_type == FieldDescriptor.TYPE_BOOL:
-            # Convert to boolean
-            setattr(message, field_name, bool(int(field_vector[0])))
-
-        elif field_type == FieldDescriptor.TYPE_ENUM:
-            # Convert to enum value
-            setattr(message, field_name, int(field_vector[0]))
-
-        elif field_type in self._get_numeric_types():
-            # Convert to appropriate numeric type
-            if field_type in (FieldDescriptor.TYPE_FLOAT, FieldDescriptor.TYPE_DOUBLE):
-                setattr(message, field_name, float(field_vector[0]))
-            else:
-                setattr(message, field_name, int(field_vector[0]))
+        # Use the helper method to convert the value
+        field_value = self._convert_vector_to_field_value(field_type, field_vector)
+        setattr(message, field_name, field_value)
 
     def _reconstruct_repeated_field(self, message, field_info, field_vector):
-        """Reconstruct a repeated field."""
+        """Reconstruct a repeated field"""
         field_name = field_info.name
         field_type = field_info.type
         repeated_field = getattr(message, field_name)
@@ -403,42 +448,15 @@ class ProtobufHandler:
             length = field_info.repeat_lengths[i]
             element_vector = field_vector[offset:offset + length]
 
-            if field_type == FieldDescriptor.TYPE_STRING:
-                # Convert to string
-                chars = []
-                for val in element_vector:
-                    if 0 <= val <= 255:
-                        chars.append(chr(int(val)))
-                repeated_field.append(''.join(chars))
-
-            elif field_type == FieldDescriptor.TYPE_BYTES:
-                # Convert to bytes
-                bytes_data = bytearray()
-                for val in element_vector:
-                    if 0 <= val <= 255:
-                        bytes_data.append(int(val))
-                repeated_field.append(bytes(bytes_data))
-
-            elif field_type == FieldDescriptor.TYPE_BOOL:
-                # Convert to boolean
-                repeated_field.append(bool(int(element_vector[0])))
-
-            elif field_type == FieldDescriptor.TYPE_ENUM:
-                # Convert to enum
-                repeated_field.append(int(element_vector[0]))
-
-            elif field_type in self._get_numeric_types():
-                # Convert to numeric
-                if field_type in (FieldDescriptor.TYPE_FLOAT, FieldDescriptor.TYPE_DOUBLE):
-                    repeated_field.append(float(element_vector[0]))
-                else:
-                    repeated_field.append(int(element_vector[0]))
-
-            elif field_type == FieldDescriptor.TYPE_MESSAGE:
-                # Skip message fields for now
-                # in the original code
-                print(f"Skipping repeated message field {field_name} - reconstruction not implemented")
+            if field_type == FieldDescriptor.TYPE_MESSAGE:
+                # Skip message fields, not implemented in the original code
+                raise NotImplementedError
+            else:
+                # Use the helper method to convert the value
+                field_value = self._convert_vector_to_field_value(field_type, element_vector)
+                repeated_field.append(field_value)
             offset += length
+
     #TODO
     def _reconstruct_message(self, message, field_info, field_vector):
         """

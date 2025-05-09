@@ -15,11 +15,6 @@ class ProtobufDriver():
 
     """
     Function for converting afl++ queue cases to vectors for mutation, and bounds vectors
-    Args:
-        afl_queue_path: path to afl++ output unique queue folder
-        proto_path: Path to the .proto file
-        proto_name: Name of the proto file
-        msg_name: Name of the message type to handle (e.g., "ProtoInput")
     """
     def to_vectors(self) -> tuple[list, list, list, list]:
         afl_cases = self._process(self._afl_queue_path)
@@ -42,6 +37,34 @@ class ProtobufDriver():
             #     continue
             trans_vec = self._proto_handler.protobuf_to_vector(trans_case)[0]
             assert (trans_vec == vec).all()
+            # generate bound vector for this case
+            vectors.append(vec)
+            min_bound_vectors.append(min_bound_vec)
+            max_bound_vectors.append(max_bound_vec)
+            vec_field_infos.append(field_infos)
+        return vectors, min_bound_vectors, max_bound_vectors, vec_field_infos
+
+    """
+    Function for converting afl++ queue cases to vectors for mutation, but without protobuf driver
+    Only convert bytes strings to int arrays, each uint8 stands for a byte data
+    """
+    def to_byte_vectors(self) -> tuple[list, list, list, list]:
+        afl_cases = self._process(self._afl_queue_path)
+        vectors = []
+        min_bound_vectors = []
+        max_bound_vectors = []
+        vec_field_infos = []
+        for case in afl_cases:
+            try:
+                if not self._proto_handler.is_valid_msg(case):
+                    continue
+                vec = np.frombuffer(case, dtype='uint8')
+                min_bound_vec = np.zeros(len(vec), dtype='uint8')
+                max_bound_vec = np.full(len(vec), 255, dtype='uint8')
+                field_infos = None
+            except Exception as e:
+                print(f"Error parsing protobuf data: {e}")
+                continue
             # generate bound vector for this case
             vectors.append(vec)
             min_bound_vectors.append(min_bound_vec)
